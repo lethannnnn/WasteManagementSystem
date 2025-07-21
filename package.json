@@ -1,0 +1,40 @@
+{
+  "name": "mycycle-plus",
+  "version": "1.0.0",
+  "description": "MyCycle+ - Reward-Based Recycling Management System",
+  "private": true,
+  "workspaces": [
+    "apps/donor-mobile",
+    "apps/collector-mobile", 
+    "apps/admin-web",
+    "apps/sponsor-web"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:mobile && npm run install:web",
+    "install:mobile": "cd apps/donor-mobile && npm install && cd ../collector-mobile && npm install",
+    "install:web": "cd apps/admin-web && npm install && cd ../sponsor-web && npm install",
+    "start:donor": "cd apps/donor-mobile && npm start",
+    "start:collector": "cd apps/collector-mobile && npm start",
+    "start:admin": "cd apps/admin-web && npm run dev",
+    "start:sponsor": "cd apps/sponsor-web && npm run dev",
+    "start:mobile": "concurrently \"npm run start:donor\" \"npm run start:collector\"",
+    "start:web": "concurrently \"npm run start:admin\" \"npm run start:sponsor\"",
+    "start:all": "concurrently \"npm run start:donor\" \"npm run start:collector\" \"npm run start:admin\" \"npm run start:sponsor\"",
+    "android:donor": "cd apps/donor-mobile && npm run android",
+    "android:collector": "cd apps/collector-mobile && npm run android",
+    "ios:donor": "cd apps/donor-mobile && npm run ios",
+    "ios:collector": "cd apps/collector-mobile && npm run ios",
+    "web:donor": "cd apps/donor-mobile && npm run web",
+    "web:collector": "cd apps/collector-mobile && npm run web",
+    "build:web": "npm run build:admin && npm run build:sponsor",
+    "build:admin": "cd apps/admin-web && npm run build",
+    "build:sponsor": "cd apps/sponsor-web && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+} 
