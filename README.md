@@ -98,8 +98,8 @@ Both mobile emulators can run simultaneously on the same device:
 3. Test donor-collector interactions
 
 ### Port Configuration
-- **Donor Mobile**: Expo dev server on default port
-- **Collector Mobile**: Expo dev server on alternate port
+- **Donor Mobile**: Expo dev server on port 8081
+- **Collector Mobile**: Expo dev server on port 8082
 - **Admin Web**: Vite dev server on port 5173
 - **Sponsor Web**: Vite dev server on port 5174
 
