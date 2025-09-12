@@ -11,6 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Profile = {
   id: string
   user_type: 'donor' | 'collector' | 'admin' | 'sponsor'
+  email: string
   full_name: string
   phone?: string
   profile_image_url?: string

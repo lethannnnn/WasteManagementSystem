@@ -11,6 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Profile = {
   id: string
   user_type: 'donor' | 'collector' | 'admin' | 'sponsor'
+  email: string
   full_name: string
   phone?: string
   profile_image_url?: string
@@ -20,11 +21,15 @@ export type Profile = {
 }
 
 export type Donor = {
-  donor_id: string
-  points_earned: number
-  total_recycled_kg: number
-  pickups_completed: number
-  level_status: string
+  id: string // Primary key, matches auth.users.id
+  reward_points: number
+  membership_tier: string
+  total_donations: number
+  total_weight_kg: number
+  last_donation?: string
+  preferred_pickup_time?: string
+  created_at: string
+  updated_at: string
 }
 
 export type Pickup = {
