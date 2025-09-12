@@ -1,0 +1,162 @@
+@startuml MyCycle+ Donor Package Diagram
+
+title MyCycle+ Donor Package Diagram
+
+' ================================
+' PRESENTATION LAYER (DONOR UI)
+' ================================
+package "MyCycle+ Donor Mobile App Presentation Layer (Donor)" as PresentationLayer {
+    component RegistrationUI
+    component LoginUI
+    component SplashScreenUI
+    component HomePageUI
+    component SchedulePickupUI
+    component RewardsUI
+    component LeaderboardUI
+    component ProfileUI
+    component NotificationUI
+    component MapUI
+    component QRScannerUI
+    component BadgesUI
+    component SettingsUI
+    component HelpUI
+}
+
+' ================================
+' BUSINESS LOGIC LAYER (DONOR)
+' ================================
+package "MyCycle+ Donor Mobile App Business Logic Layer (Donor)" as BusinessLogicLayer {
+    component RegistrationCtl
+    component LoginCtl
+    component HomePageCtl
+    component SchedulePickupCtl
+    component RewardsCtl
+    component LeaderboardCtl
+    component ProfileCtl
+    component NotificationCtl
+    component MapCtl
+    component QRScannerCtl
+    component BadgesCtl
+    component SettingsCtl
+    component PointsCalculatorCtl
+    component ValidationCtl
+}
+
+' ================================
+' DATA ACCESS LAYER (DONOR)
+' ================================
+package "MyCycle+ Donor Mobile App Data Access Layer (Donor)" as DataAccessLayer {
+    component UserRepository
+    component PickupRepository
+    component RewardsRepository
+    component LeaderboardRepository
+    component NotificationRepository
+    component BadgesRepository
+    component PointsRepository
+    component SettingsRepository
+    component LocalStorageManager
+    component APIClient
+    component CacheManager
+}
+
+' ================================
+' RELATIONSHIPS - PRESENTATION TO BUSINESS
+' ================================
+RegistrationUI --> RegistrationCtl
+LoginUI --> LoginCtl
+SplashScreenUI --> LoginCtl
+HomePageUI --> HomePageCtl
+SchedulePickupUI --> SchedulePickupCtl
+RewardsUI --> RewardsCtl
+LeaderboardUI --> LeaderboardCtl
+ProfileUI --> ProfileCtl
+NotificationUI --> NotificationCtl
+MapUI --> MapCtl
+QRScannerUI --> QRScannerCtl
+BadgesUI --> BadgesCtl
+SettingsUI --> SettingsCtl
+HelpUI --> SettingsCtl
+
+' ================================
+' RELATIONSHIPS - BUSINESS TO DATA ACCESS
+' ================================
+RegistrationCtl --> UserRepository
+RegistrationCtl --> ValidationCtl
+LoginCtl --> UserRepository
+LoginCtl --> LocalStorageManager
+HomePageCtl --> UserRepository
+HomePageCtl --> PointsRepository
+HomePageCtl --> NotificationRepository
+SchedulePickupCtl --> PickupRepository
+SchedulePickupCtl --> APIClient
+RewardsCtl --> RewardsRepository
+RewardsCtl --> PointsRepository
+LeaderboardCtl --> LeaderboardRepository
+LeaderboardCtl --> UserRepository
+ProfileCtl --> UserRepository
+ProfileCtl --> BadgesRepository
+NotificationCtl --> NotificationRepository
+NotificationCtl --> LocalStorageManager
+MapCtl --> APIClient
+QRScannerCtl --> PickupRepository
+BadgesCtl --> BadgesRepository
+BadgesCtl --> PointsRepository
+SettingsCtl --> SettingsRepository
+SettingsCtl --> LocalStorageManager
+PointsCalculatorCtl --> PointsRepository
+ValidationCtl --> LocalStorageManager
+
+' ================================
+' INTERNAL BUSINESS LOGIC RELATIONSHIPS
+' ================================
+HomePageCtl --> PointsCalculatorCtl
+SchedulePickupCtl --> PointsCalculatorCtl
+RewardsCtl --> ValidationCtl
+ProfileCtl --> ValidationCtl
+
+' ================================
+' DATA ACCESS INTERNAL RELATIONSHIPS
+' ================================
+UserRepository --> APIClient
+UserRepository --> CacheManager
+PickupRepository --> APIClient
+PickupRepository --> CacheManager
+RewardsRepository --> APIClient
+RewardsRepository --> CacheManager
+LeaderboardRepository --> APIClient
+LeaderboardRepository --> CacheManager
+NotificationRepository --> LocalStorageManager
+BadgesRepository --> APIClient
+BadgesRepository --> CacheManager
+PointsRepository --> APIClient
+PointsRepository --> LocalStorageManager
+SettingsRepository --> LocalStorageManager
+
+' ================================
+' EXTERNAL DEPENDENCIES
+' ================================
+component "External MyCycle+ Backend API" as BackendAPI
+component "Google Maps API" as GoogleMapsAPI
+component "Firebase Notifications" as FirebaseAPI
+component "Camera API" as CameraAPI
+
+APIClient --> BackendAPI : <<uses>>
+MapCtl --> GoogleMapsAPI : <<uses>>
+NotificationCtl --> FirebaseAPI : <<uses>>
+QRScannerCtl --> CameraAPI : <<uses>>
+
+' ================================
+' STYLING
+' ================================
+skinparam packageStyle rectangle
+skinparam component {
+    BackgroundColor lightblue
+    BorderColor navy
+}
+
+skinparam package {
+    BackgroundColor lightyellow
+    BorderColor darkred
+}
+
+@enduml

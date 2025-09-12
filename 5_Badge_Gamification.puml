@@ -1,0 +1,105 @@
+@startuml 5_Badge_Gamification
+title MyCycle+ Badge & Gamification Flow
+
+participant "System Events" as Events
+participant "Badge Service" as BadgeSvc
+participant "Database" as DB
+participant "Point Service" as PointSvc
+participant "Leaderboard Service" as LeaderboardSvc
+participant "Notification Service" as NotifSvc
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+
+== Badge Trigger Events ==
+Events -> BadgeSvc: Pickup Completed Event
+BadgeSvc -> DB: Get User Activity Metrics
+DB -> BadgeSvc: Return user statistics
+
+loop Check All Badge Criteria
+    BadgeSvc -> DB: SELECT badges WHERE is_active = true
+    BadgeSvc -> BadgeSvc: Evaluate Badge Criteria
+    
+    alt Badge Criteria Met
+        BadgeSvc -> DB: SELECT FROM user_badges WHERE user_id = ? AND badge_id = ?
+        
+        alt Badge Not Yet Earned
+            BadgeSvc -> DB: INSERT INTO user_badges (user_id, badge_id, earned_at, earning_context)
+            
+            note right: Award bonus points for badge
+            BadgeSvc -> PointSvc: Award Badge Bonus Points
+            PointSvc -> DB: INSERT INTO point_transactions (user_id, transaction_type, points_amount, description)
+            PointSvc -> DB: UPDATE donors SET total_points = total_points + ?, points_earned = points_earned + ?
+            
+            BadgeSvc -> NotifSvc: Send Badge Notification
+            NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message)
+            NotifSvc -> Donor: Push Notification "New Badge Earned!"
+        end
+    end
+end
+
+== User Achievement Milestones ==
+alt First Pickup Completed
+    BadgeSvc -> BadgeSvc: Check "First Pickup Champion" criteria
+    BadgeSvc -> DB: Award "First Pickup Champion" badge
+else 10 Pickups Completed
+    BadgeSvc -> BadgeSvc: Check "Eco Warrior" criteria  
+    BadgeSvc -> DB: Award "Eco Warrior" badge
+else 100kg Recycled
+    BadgeSvc -> BadgeSvc: Check "Recycling Master" criteria
+    BadgeSvc -> DB: Award "Recycling Master" badge
+else Monthly Goal Achieved
+    BadgeSvc -> BadgeSvc: Check "Monthly Champion" criteria
+    BadgeSvc -> DB: Award "Monthly Champion" badge
+end
+
+== Leaderboard Update ==
+Events -> LeaderboardSvc: Update Leaderboard Trigger
+LeaderboardSvc -> DB: Get Current Period Rankings
+
+note over LeaderboardSvc, DB: Leaderboard Calculations (Parallel)
+LeaderboardSvc -> DB: Calculate Weekly Rankings
+LeaderboardSvc -> DB: Calculate Monthly Rankings  
+LeaderboardSvc -> DB: Calculate Yearly Rankings
+
+LeaderboardSvc -> DB: UPDATE leaderboard SET rank_position = ?, total_points = ?, total_weight_kg = ?
+
+== Level Progression ==
+BadgeSvc -> DB: Calculate User Level
+BadgeSvc -> DB: SELECT total_points FROM donors WHERE user_id = ?
+
+alt Points >= 1000 (Green Champion)
+    BadgeSvc -> DB: UPDATE donors SET level_status = 'Green Champion'
+    BadgeSvc -> NotifSvc: Send Level Up Notification
+else Points >= 500 (Eco Warrior)
+    BadgeSvc -> DB: UPDATE donors SET level_status = 'Eco Warrior'
+    BadgeSvc -> NotifSvc: Send Level Up Notification
+else Points < 500 (Beginner)
+    BadgeSvc -> DB: UPDATE donors SET level_status = 'Beginner'
+end
+
+== User Views Gamification ==
+Donor -> DonorApp: Open Profile/Badges
+DonorApp -> BadgeSvc: Get User Badges & Progress
+BadgeSvc -> DB: SELECT user_badges, badges WHERE user_id = ?
+BadgeSvc -> DB: SELECT user progress towards unearned badges
+BadgeSvc -> DonorApp: Return Badges & Progress Data
+
+Donor -> DonorApp: View Leaderboard
+DonorApp -> LeaderboardSvc: Get Leaderboard Rankings
+LeaderboardSvc -> DB: SELECT leaderboard WHERE period_type = 'weekly' ORDER BY rank_position
+LeaderboardSvc -> DonorApp: Return Rankings
+DonorApp -> Donor: Display Leaderboard
+
+== Achievement Streaks ==
+BadgeSvc -> DB: Check Daily/Weekly Streaks
+BadgeSvc -> DB: SELECT COUNT daily pickup streaks for user
+
+alt 7 Day Streak Achieved
+    BadgeSvc -> DB: Award "Week Warrior" badge
+    BadgeSvc -> NotifSvc: Send Streak Achievement Notification
+else 30 Day Streak Achieved
+    BadgeSvc -> DB: Award "Monthly Master" badge
+    BadgeSvc -> NotifSvc: Send Streak Achievement Notification
+end
+
+@enduml 

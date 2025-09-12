@@ -1,0 +1,198 @@
+@startuml MyCycle_Plus_Deployment_Diagram
+!theme plain
+title MyCycle+ System - Detailed Deployment Diagram
+
+' ================================
+' STYLING FOR BETTER VISIBILITY  
+' ================================
+skinparam node {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+skinparam artifact {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+skinparam component {
+    BackgroundColor LightGreen
+    BorderColor DarkGreen
+}
+skinparam database {
+    BackgroundColor LightCyan
+    BorderColor DarkCyan
+}
+skinparam device {
+    BackgroundColor LightPink
+    BorderColor DarkRed
+    FontSize 10
+}
+skinparam ArrowThickness 2
+
+' ================================
+' USER DEVICES
+' ================================
+node "User Devices" as UserDevices {
+    component "Windows 11" as Windows11
+    component "Google Chrome" as GoogleChrome
+    component "Microsoft Edge" as MicrosoftEdge
+    component "Firefox" as Firefox
+    component "Android OS" as AndroidOS
+    component "iOS" as iOSSystem
+    component "Keyboard" as Keyboard
+    component "Mouse" as Mouse
+    component "Camera" as Camera
+    component "GPS" as GPS
+    component "Touchscreen" as Touchscreen
+    component "Microphone" as Microphone
+}
+
+' ================================
+' EXTERNAL SERVER
+' ================================
+node "External Server" as ExternalServer {
+    artifact "googleMapsGeocoding.js" as GoogleMapsGeocoding
+    artifact "routeOptimization.js" as RouteOptimization
+    artifact "distanceCalculation.js" as DistanceCalculation
+    artifact "mapsTileService.js" as MapsTileService
+    artifact "stripePaymentProcessor.js" as StripePaymentProcessor
+    artifact "paymentValidation.js" as PaymentValidation
+    artifact "refundProcessor.js" as RefundProcessor
+    artifact "firebasePushNotification.js" as FirebasePushNotification
+    artifact "emailNotificationService.js" as EmailNotificationService
+    artifact "smsNotificationService.js" as SMSNotificationService
+    artifact "notificationQueue.js" as NotificationQueue
+    artifact "weatherApiIntegration.js" as WeatherApiIntegration
+    artifact "carbonFootprintCalculator.js" as CarbonFootprintCalculator
+    artifact "externalReportsAPI.js" as ExternalReportsAPI
+    artifact "thirdPartyAuthentication.js" as ThirdPartyAuthentication
+}
+
+' ================================
+' BACKEND SERVER
+' ================================
+node "Backend Server" as BackendServer {
+    artifact "user_api.py" as UserAPI
+    artifact "donor_api.py" as DonorAPI
+    artifact "collector_api.py" as CollectorAPI
+    artifact "admin_api.py" as AdminAPI
+    artifact "sponsor_api.py" as SponsorAPI
+    artifact "pickup_api.py" as PickupAPI
+    artifact "rewards_api.py" as RewardsAPI
+    artifact "analytics_api.py" as AnalyticsAPI
+    artifact "authentication.py" as Authentication
+    artifact "authorization.py" as Authorization
+    artifact "middleware.py" as Middleware
+    artifact "settings.py" as Settings
+    artifact "urls.py" as URLs
+    artifact "manage.py" as Manage
+    artifact "models/models.py" as Models
+    artifact "serializers/serializers.py" as Serializers
+}
+
+' ================================
+' APPLICATION SERVER
+' ================================
+node "Application Server" as ApplicationServer {
+    artifact "donorRegistration.js" as DonorRegistration
+    artifact "collectorRegistration.js" as CollectorRegistration
+    artifact "userProfileUpdate.js" as UserProfileUpdate
+    artifact "userAccountVerification.js" as UserAccountVerification
+    artifact "pickupScheduling.js" as PickupSchedulingMain
+    artifact "pickupCancellation.js" as PickupCancellation
+    artifact "pickupRescheduling.js" as PickupRescheduling
+    artifact "pickupNotification.js" as PickupNotification
+    artifact "pickupHistoryTracking.js" as PickupHistoryTracking
+    artifact "collectionRouteAssignment.js" as CollectionRouteAssignment
+    artifact "routeOptimizationEngine.js" as RouteOptimizationEngine
+    artifact "pickupStatusUpdate.js" as PickupStatusUpdateMain
+    artifact "qrCodeValidation.js" as QRCodeValidation
+    artifact "wasteWeightCalculation.js" as WasteWeightCalculation
+    artifact "pointsCalculationEngine.js" as PointsCalculationEngine
+    artifact "rewardsCatalogManagement.js" as RewardsCatalogManagement
+    artifact "voucherRedemption.js" as VoucherRedemption
+    artifact "badgeAwardSystem.js" as BadgeAwardSystem
+    artifact "leaderboardGeneration.js" as LeaderboardGeneration
+    artifact "userAnalytics.js" as UserAnalyticsMain
+    artifact "pickupAnalytics.js" as PickupAnalyticsMain
+    artifact "rewardsAnalytics.js" as RewardsAnalyticsMain
+    artifact "environmentalImpactCalculator.js" as EnvironmentalImpactCalculator
+    artifact "adminUserManagement.js" as AdminUserManagement
+    artifact "adminRewardsManagement.js" as AdminRewardsManagement
+    artifact "adminAnalyticsDashboard.js" as AdminAnalyticsDashboard
+    artifact "sponsorRegistrationPortal.js" as SponsorRegistrationPortal
+    artifact "sponsorCampaignCreation.js" as SponsorCampaignCreation
+    artifact "sponsorRewardsIntegration.js" as SponsorRewardsIntegration
+    artifact "sponsorAnalyticsReporting.js" as SponsorAnalyticsReporting
+}
+
+' ================================
+' DATABASE
+' ================================
+database "Database Server" as DatabaseServer {
+    artifact "userTableSchema.sql" as UserTableSchema
+    artifact "donorTableSchema.sql" as DonorTableSchema
+    artifact "collectorTableSchema.sql" as CollectorTableSchema
+    artifact "pickupTableSchema.sql" as PickupTableSchema
+    artifact "pickupItemsTableSchema.sql" as PickupItemsTableSchema
+    artifact "routesTableSchema.sql" as RoutesTableSchema
+    artifact "rewardsTableSchema.sql" as RewardsTableSchema
+    artifact "vouchersTableSchema.sql" as VouchersTableSchema
+    artifact "badgesTableSchema.sql" as BadgesTableSchema
+    artifact "sponsorsTableSchema.sql" as SponsorsTableSchema
+    artifact "userPointsView.sql" as UserPointsView
+    artifact "pickupAnalyticsView.sql" as PickupAnalyticsView
+    artifact "environmentalImpactView.sql" as EnvironmentalImpactView
+    artifact "leaderboardView.sql" as LeaderboardView
+    artifact "pointsCalculationTrigger.sql" as PointsCalculationTrigger
+    artifact "badgeAwardTrigger.sql" as BadgeAwardTrigger
+    artifact "pickupCompletionTrigger.sql" as PickupCompletionTrigger
+    artifact "donorDataIndex.sql" as DonorDataIndex
+    artifact "pickupLocationIndex.sql" as PickupLocationIndex
+    artifact "rewardsDataIndex.sql" as RewardsDataIndex
+    artifact "userSessionCache.rdb" as UserSessionCacheRDB
+    artifact "donorProfileCache.rdb" as DonorProfileCacheRDB
+    artifact "routeOptimizationCache.rdb" as RouteOptimizationCacheRDB
+    artifact "rewardsCatalogCache.rdb" as RewardsCatalogCacheRDB
+    artifact "leaderboardCache.rdb" as LeaderboardCacheRDB
+}
+
+' ================================
+' DEPLOYMENT CONNECTIONS
+' ================================
+
+' Hardware Device Connections
+Keyboard --> UserDevices : Input Device
+Mouse --> UserDevices : Input Device
+Camera --> UserDevices : QR Scanner/Photo
+GPS --> UserDevices : Location Service
+Touchscreen --> UserDevices : Touch Input
+Microphone --> UserDevices : Audio Input
+
+' Internal Device Connections
+GoogleChrome .-> UserDevices : Web Browser
+MicrosoftEdge .-> UserDevices : Web Browser
+Firefox .-> UserDevices : Web Browser
+Windows11 .-> UserDevices : Operating System
+AndroidOS .-> UserDevices : Mobile OS
+iOSSystem .-> UserDevices : Mobile OS
+
+' User Devices to Backend Server
+UserDevices --> BackendServer : HTTPS Requests
+
+' Backend Server to Application Server
+BackendServer --> ApplicationServer : Internal API Calls
+
+' Application Server to Database
+ApplicationServer --> DatabaseServer : Database Operations
+
+' Application Server to External Services
+ApplicationServer --> ExternalServer : External API Calls
+
+' Technology Annotations
+note top of UserDevices : 3 Operating Systems\n3 Web Browsers\n6 Hardware Devices
+note top of ExternalServer : 15 External Integration Artifacts\nMaps, Payment, Notifications\nThird-party APIs & Services
+note top of BackendServer : 16 Python API Artifacts\nDjango/Flask Backend\nRESTful APIs & Authentication
+note top of ApplicationServer : 30 Business Logic Artifacts\nUser, Pickup, Rewards Services\nAnalytics & Sponsor Management
+note top of DatabaseServer : 25 Data & Cache Artifacts\nTable Schemas, Views, Triggers\nIndexes & Cache Files
+
+@enduml

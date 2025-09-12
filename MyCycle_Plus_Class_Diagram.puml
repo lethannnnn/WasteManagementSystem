@@ -1,0 +1,515 @@
+@startuml MyCycle_Plus_Class_Diagram
+
+!define ENTITY class
+!define PK <<PK>>
+!define FK <<FK>>
+
+' Core User Management
+ENTITY User {
+  -user_id: int PK
+  -user_type: ENUM
+  -email: varchar(255)
+  -password_hash: varchar(255)
+  -full_name: varchar(255)
+  -phone: varchar(20)
+  -profile_image_url: varchar(500)
+  -verification_status: ENUM
+  -is_active: boolean
+  -last_login: datetime
+  -created_at: timestamp
+  -updated_at: timestamp
+  +login(email: string, password: string): boolean
+  +logout(): void
+  +updateProfile(profile: UserProfile): void
+  +changePassword(oldPass: string, newPass: string): boolean
+  +uploadProfileImage(image: File): string
+  +getNotifications(): List<Notification>
+}
+
+ENTITY Donor {
+  -donor_id: int PK
+  -user_id: int FK
+  -total_points: int
+  -points_earned: int
+  -points_spent: int
+  -total_recycled_weight: decimal(10,2)
+  -pickups_completed: int
+  -current_rank: int
+  -level_status: ENUM
+  -preferred_pickup_time: time
+  -last_pickup_date: date
+  -notification_preferences: JSON
+  +schedulePickup(address: Address, date: Date, time: Time): Pickup
+  +redeemReward(reward: Reward): Redemption
+  +getPointsBalance(): int
+  +getCurrentRank(): int
+  +earnPoints(points: int, source: string): void
+  +spendPoints(points: int, purpose: string): boolean
+}
+
+ENTITY Collector {
+  -collector_id: int PK
+  -user_id: int FK
+  -collector_code: varchar(20)
+  -vehicle_id: int FK
+  -service_area_id: int FK
+  -rating: decimal(3,2)
+  -total_collections: int
+  -employment_status: ENUM
+  -working_hours: JSON
+  -emergency_contact: varchar(255)
+  -last_active: datetime
+  +getAssignedRoutes(date: Date): List<Route>
+  +updatePickupStatus(pickupId: int, status: PickupStatus): void
+  +scanQRCode(qrCode: string): Pickup
+  +completePickup(pickupId: int, items: List<PickupItem>): void
+  +optimizeRoute(pickups: List<Pickup>): Route
+  +updateLocation(lat: decimal, lng: decimal): void
+}
+
+ENTITY Admin {
+  -admin_id: int PK
+  -user_id: int FK
+  -role_type: ENUM
+  -permissions: JSON
+  -department: varchar(100)
+  -last_login: datetime
+  +manageUsers(): List<User>
+  +generateReports(type: ReportType, range: DateRange): Report
+  +moderateContent(contentId: int): void
+  +viewSystemAnalytics(): SystemAnalytics
+  +manageRewards(): List<Reward>
+  +configureSystem(config: JSON): void
+}
+
+ENTITY Sponsor {
+  -sponsor_id: int PK
+  -user_id: int FK
+  -company_name: varchar(255)
+  -business_registration: varchar(50)
+  -industry: varchar(100)
+  -website_url: varchar(500)
+  -contact_person: varchar(255)
+  -partnership_type: ENUM
+  -partnership_status: ENUM
+  -partnership_start_date: date
+  -monthly_budget: decimal(12,2)
+  -brand_assets: JSON
+  +createReward(details: RewardDetails): Reward
+  +manageBudget(amount: decimal): void
+  +viewRedemptionStats(): RedemptionStats
+  +updatePartnershipTerms(terms: JSON): void
+  +uploadBrandAssets(assets: List<File>): void
+}
+
+' Address and Location
+ENTITY Address {
+  -address_id: int PK
+  -user_id: int FK
+  -address_line_1: varchar(255)
+  -address_line_2: varchar(255)
+  -city: varchar(100)
+  -state: varchar(100)
+  -postcode: varchar(10)
+  -country: varchar(100)
+  -latitude: decimal(10,8)
+  -longitude: decimal(11,8)
+  -address_type: ENUM
+  -is_primary: boolean
+  -access_instructions: text
+  +validateAddress(): boolean
+  +getCoordinates(): Coordinates
+  +calculateDistance(other: Address): decimal
+  +formatFullAddress(): string
+}
+
+ENTITY ServiceArea {
+  -area_id: int PK
+  -area_name: varchar(255)
+  -state: varchar(100)
+  -postcode_range: varchar(50)
+  -is_active: boolean
+  -service_fee: decimal(8,2)
+  -max_collectors: int
+  +isPostcodeInRange(postcode: string): boolean
+  +getActiveCollectors(): List<Collector>
+  +calculateServiceFee(weight: decimal): decimal
+}
+
+' Vehicle Management
+ENTITY Vehicle {
+  -vehicle_id: int PK
+  -vehicle_type: ENUM
+  -license_plate: varchar(20)
+  -make_model: varchar(100)
+  -year: int
+  -capacity_kg: decimal(8,2)
+  -fuel_type: ENUM
+  -status: ENUM
+  -last_maintenance: date
+  -next_maintenance_due: date
+  -insurance_expiry: date
+  -road_tax_expiry: date
+  -vehicle_details: JSON
+  +scheduleMaintenance(date: Date): void
+  +updateStatus(status: VehicleStatus): void
+  +checkCapacity(weight: decimal): boolean
+  +calculateFuelCost(distance: decimal): decimal
+}
+
+' Route and Pickup Management
+ENTITY Route {
+  -route_id: int PK
+  -collector_id: int FK
+  -route_name: varchar(255)
+  -route_code: varchar(20)
+  -route_date: date
+  -status: ENUM
+  -total_stops: int
+  -completed_stops: int
+  -total_distance_km: decimal(8,2)
+  -estimated_duration: time
+  -actual_duration: time
+  -priority: ENUM
+  -start_time: datetime
+  -end_time: datetime
+  -optimized_sequence: JSON
+  -route_notes: text
+  +optimizeRoute(): void
+  +addPickup(pickup: Pickup): void
+  +removePickup(pickupId: int): void
+  +calculateTotalDistance(): decimal
+  +updateStatus(status: RouteStatus): void
+  +getNextPickup(): Pickup
+}
+
+ENTITY Pickup {
+  -pickup_id: int PK
+  -donor_id: int FK
+  -route_id: int FK
+  -address_id: int FK
+  -pickup_code: varchar(20)
+  -scheduled_date: date
+  -scheduled_time: time
+  -actual_pickup_time: datetime
+  -status: ENUM
+  -total_weight_kg: decimal(8,2)
+  -total_points_awarded: int
+  -special_instructions: text
+  -collector_notes: text
+  -qr_code: varchar(255)
+  -photos_before: JSON
+  -photos_after: JSON
+  +generateQRCode(): string
+  +calculatePoints(): int
+  +addItem(item: PickupItem): void
+  +removeItem(itemId: int): void
+  +complete(): void
+  +cancel(reason: string): void
+  +updateStatus(status: PickupStatus): void
+}
+
+ENTITY PickupItem {
+  -pickup_item_id: int PK
+  -pickup_id: int FK
+  -item_category_id: int FK
+  -weight_kg: decimal(8,2)
+  -condition_status: ENUM
+  -points_per_kg: int
+  -total_points: int
+  -notes: text
+  -verification_photos: JSON
+  +calculatePoints(): int
+  +validateWeight(): boolean
+  +updateCondition(status: ConditionStatus): void
+}
+
+ENTITY ItemCategory {
+  -category_id: int PK
+  -category_name: varchar(100)
+  -description: text
+  -base_points_per_kg: int
+  -icon_url: varchar(500)
+  -color_code: varchar(7)
+  -is_active: boolean
+  -handling_instructions: text
+  -environmental_impact: JSON
+  -sorting_priority: int
+  +calculatePoints(weight: decimal): int
+  +getEnvironmentalImpact(): EnvironmentalImpact
+  +validateItem(description: string): boolean
+}
+
+' QR Code Management
+ENTITY QRCode {
+  -qr_id: int PK
+  -qr_code: varchar(255)
+  -qr_data: text
+  -generated_at: datetime
+  -is_used: boolean
+  -scanned_at: datetime
+  -scanned_by_collector: int FK
+  -scan_location_lat: decimal(10,8)
+  -scan_location_lng: decimal(11,8)
+  +generate(data: string): string
+  +scan(collectorId: int, lat: decimal, lng: decimal): boolean
+  +validate(): boolean
+}
+
+' Rewards System
+ENTITY Reward {
+  -reward_id: int PK
+  -sponsor_id: int FK
+  -reward_name: varchar(255)
+  -description: text
+  -points_required: int
+  -category: ENUM
+  -stock_quantity: int
+  -redeemed_count: int
+  -image_url: varchar(500)
+  -terms_conditions: text
+  -valid_from: date
+  -valid_until: date
+  -is_active: boolean
+  -daily_limit: int
+  -user_limit: int
+  -cost_per_redemption: decimal(8,2)
+  +checkAvailability(): boolean
+  +validateRedemption(donorId: int): boolean
+  +reduceStock(): void
+  +isExpired(): boolean
+  +calculateCost(): decimal
+}
+
+ENTITY Redemption {
+  -redemption_id: int PK
+  -donor_id: int FK
+  -reward_id: int FK
+  -points_spent: int
+  -redemption_code: varchar(50)
+  -status: ENUM
+  -redeemed_at: datetime
+  -confirmed_at: datetime
+  -delivered_at: datetime
+  -expires_at: datetime
+  -delivery_method: ENUM
+  -delivery_details: JSON
+  -feedback_rating: int
+  -feedback_comments: text
+  +generateRedemptionCode(): string
+  +confirm(): void
+  +deliver(): void
+  +expire(): void
+  +provideFeedback(rating: int, comments: string): void
+}
+
+ENTITY SponsorReward {
+  -sponsor_reward_id: int PK
+  -sponsor_id: int FK
+  -reward_id: int FK
+  -cost_per_redemption: decimal(8,2)
+  -monthly_quota: int
+  -redeemed_this_month: int
+  -auto_renewal: boolean
+  +checkQuotaAvailable(): boolean
+  +updateRedemptionCount(): void
+  +calculateMonthlyCost(): decimal
+  +renewQuota(): void
+}
+
+' Badge System
+ENTITY Badge {
+  -badge_id: int PK
+  -badge_name: varchar(100)
+  -description: text
+  -criteria_text: text
+  -icon_url: varchar(500)
+  -badge_color: varchar(7)
+  -rarity: ENUM
+  -points_required: int
+  -category: ENUM
+  -is_active: boolean
+  -sort_order: int
+  +checkEligibility(user: User): boolean
+  +awardToUser(userId: int): UserBadge
+}
+
+ENTITY UserBadge {
+  -user_badge_id: int PK
+  -user_id: int FK
+  -badge_id: int FK
+  -earned_at: datetime
+  -is_displayed: boolean
+  -earning_context: JSON
+  +display(): void
+  +hide(): void
+  +getEarningDetails(): JSON
+}
+
+' Analytics and Transactions
+ENTITY PointTransaction {
+  -transaction_id: int PK
+  -user_id: int FK
+  -pickup_id: int FK
+  -redemption_id: int FK
+  -transaction_type: ENUM
+  -points_amount: int
+  -description: varchar(255)
+  -transaction_date: datetime
+  -reference_code: varchar(50)
+  -admin_notes: text
+  -metadata: JSON
+  +processTransaction(): void
+  +reverseTransaction(): void
+  +generateReference(): string
+}
+
+ENTITY Notification {
+  -notification_id: int PK
+  -user_id: int FK
+  -notification_type: ENUM
+  -title: varchar(255)
+  -message: text
+  -priority: ENUM
+  -category: varchar(50)
+  -is_read: boolean
+  -is_pushed: boolean
+  -sent_at: datetime
+  -read_at: datetime
+  -action_url: varchar(500)
+  -action_data: JSON
+  -expires_at: datetime
+  +send(): void
+  +markAsRead(): void
+  +isExpired(): boolean
+}
+
+ENTITY Leaderboard {
+  -leaderboard_id: int PK
+  -user_id: int FK
+  -period_type: ENUM
+  -period_start: date
+  -period_end: date
+  -rank_position: int
+  -total_points: int
+  -total_weight_kg: decimal(10,2)
+  -pickups_count: int
+  -last_updated: datetime
+  +updateRankings(): void
+  +calculateScore(): int
+  +getPeriodData(): PeriodData
+}
+
+ENTITY SystemAnalytics {
+  -analytics_id: int PK
+  -date: date
+  -metric_type: ENUM
+  -total_pickups: int
+  -total_weight_kg: decimal(12,2)
+  -total_points_awarded: int
+  -active_donors: int
+  -active_collectors: int
+  -new_registrations: int
+  -redemptions_count: int
+  -average_rating: decimal(3,2)
+  -revenue_generated: decimal(12,2)
+  -regional_breakdown: JSON
+  -category_breakdown: JSON
+  +generateDailyReport(): Report
+  +generateWeeklyReport(): Report
+  +generateMonthlyReport(): Report
+  +calculateKPIs(): JSON
+}
+
+ENTITY EnvironmentalImpact {
+  -impact_id: int PK
+  -pickup_id: int FK
+  -date: date
+  -co2_saved_kg: decimal(8,2)
+  -energy_saved_kwh: decimal(8,2)
+  -water_saved_liters: decimal(8,2)
+  -trees_equivalent: int
+  -landfill_diverted_kg: decimal(8,2)
+  -calculation_methodology: JSON
+  -impact_by_category: JSON
+  +calculateCO2Savings(): decimal
+  +calculateEnergySavings(): decimal
+  +calculateWaterSavings(): decimal
+  +generateImpactReport(): Report
+}
+
+ENTITY RouteOptimization {
+  -optimization_id: int PK
+  -route_id: int FK
+  -original_sequence: JSON
+  -optimized_sequence: JSON
+  -distance_saved_km: decimal(8,2)
+  -time_saved_minutes: int
+  -algorithm_used: varchar(100)
+  -optimization_score: decimal(5,2)
+  -optimized_at: datetime
+  -optimization_parameters: JSON
+  +optimizeSequence(): JSON
+  +calculateSavings(): Savings
+  +compareAlgorithms(): Comparison
+}
+
+ENTITY AuditLog {
+  -audit_id: int PK
+  -table_name: varchar(100)
+  -record_id: int
+  -action_type: ENUM
+  -old_values: JSON
+  -new_values: JSON
+  -changed_by: int FK
+  -changed_at: datetime
+  -ip_address: varchar(45)
+  -user_agent: text
+  +logChange(table: string, record: int, action: ActionType): void
+  +getChangeHistory(table: string, record: int): List<AuditLog>
+  +trackUserActivity(userId: int): List<AuditLog>
+}
+
+' Inheritance Relationships
+User <|-- Donor
+User <|-- Collector
+User <|-- Admin
+User <|-- Sponsor
+
+' One-to-Many Relationships
+User ||--o{ Address : "has many"
+User ||--o{ Notification : "receives"
+User ||--o{ PointTransaction : "has"
+User ||--o{ UserBadge : "earned"
+User ||--o{ Leaderboard : "appears in"
+User ||--o{ AuditLog : "tracked by"
+
+Donor ||--o{ Pickup : "schedules"
+Donor ||--o{ Redemption : "makes"
+
+Collector ||--o{ Route : "assigned to"
+Collector ||--|| Vehicle : "uses"
+Collector ||--|| ServiceArea : "works in"
+
+Sponsor ||--o{ Reward : "provides"
+Sponsor ||--o{ SponsorReward : "manages"
+
+Route ||--o{ Pickup : "contains"
+Route ||--|| RouteOptimization : "optimized by"
+
+Pickup ||--|| Address : "at location"
+Pickup ||--o{ PickupItem : "contains"
+Pickup ||--|| QRCode : "has"
+Pickup ||--o{ PointTransaction : "generates"
+Pickup ||--|| EnvironmentalImpact : "creates"
+
+PickupItem ||--|| ItemCategory : "categorized as"
+
+Reward ||--o{ Redemption : "redeemed as"
+Reward ||--o{ SponsorReward : "managed by"
+
+Redemption ||--o{ PointTransaction : "creates"
+
+Badge ||--o{ UserBadge : "awarded as"
+
+@enduml

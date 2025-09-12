@@ -1,0 +1,91 @@
+@startuml 3_Rewards_Redemption
+title MyCycle+ Rewards & Redemption Flow
+
+actor "Sponsor" as Sponsor
+participant "Sponsor Portal" as SponsorPortal
+participant "Reward Service" as RewardSvc
+participant "Database" as DB
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+participant "Redemption Service" as RedemptionSvc
+participant "Point Service" as PointSvc
+participant "Notification Service" as NotifSvc
+participant "Email Service" as EmailSvc
+
+== Sponsor Creates Reward ==
+Sponsor -> SponsorPortal: Create New Reward
+SponsorPortal -> RewardSvc: Submit Reward Details
+RewardSvc -> DB: INSERT INTO rewards\n(sponsor_id, reward_name, description,\npoints_required, category, stock_quantity, ...)
+DB -> RewardSvc: Return reward_id
+RewardSvc -> DB: INSERT INTO sponsor_rewards\n(sponsor_id, reward_id, cost_per_redemption,\nmonthly_quota)
+RewardSvc -> SponsorPortal: Reward Created Successfully
+SponsorPortal -> Sponsor: Show Success Message
+
+== Donor Browses Rewards ==
+Donor -> DonorApp: Open Rewards Page
+DonorApp -> RewardSvc: Get Available Rewards
+RewardSvc -> DB: SELECT rewards WHERE is_active = true\nAND stock_quantity > 0
+DB -> RewardSvc: Return active rewards list
+RewardSvc -> PointSvc: Get Donor Points Balance
+PointSvc -> DB: SELECT total_points FROM donors\nWHERE user_id = ?
+DB -> PointSvc: Return points balance
+RewardSvc -> DonorApp: Display Rewards with Eligibility Status
+DonorApp -> Donor: Show Rewards Catalog
+
+== Reward Redemption Process ==
+Donor -> DonorApp: Select Reward to Redeem
+DonorApp -> RedemptionSvc: Request Redemption
+RedemptionSvc -> DB: BEGIN TRANSACTION
+
+note right: Validation Checks
+RedemptionSvc -> DB: SELECT total_points FROM donors\nWHERE user_id = ?
+RedemptionSvc -> DB: SELECT points_required, stock_quantity,\ndaily_limit, user_limit FROM rewards\nWHERE reward_id = ?
+RedemptionSvc -> DB: SELECT COUNT(*) FROM redemptions\nWHERE donor_id = ? AND reward_id = ?\nAND DATE(redeemed_at) = CURRENT_DATE()
+RedemptionSvc -> DB: SELECT COUNT(*) FROM redemptions\nWHERE donor_id = ? AND reward_id = ?
+
+alt Validation Successful (Enough Points, Stock Available, Within Limits)
+    note right: Deduct Points
+    RedemptionSvc -> DB: UPDATE donors SET total_points = total_points - ?,\npoints_spent = points_spent + ?
+    
+    note right: Create Point Transaction
+    RedemptionSvc -> DB: INSERT INTO point_transactions\n(user_id, redemption_id, transaction_type,\npoints_amount, description)
+    
+    note right: Create Redemption Record
+    RedemptionSvc -> DB: INSERT INTO redemptions\n(donor_id, reward_id, points_spent,\nredemption_code, status, redeemed_at)
+    DB -> RedemptionSvc: Return redemption_id
+    
+    note right: Update Reward Stock
+    RedemptionSvc -> DB: UPDATE rewards SET stock_quantity = stock_quantity - 1,\nredeemed_count = redeemed_count + 1
+    
+    note right: Update Sponsor Quota
+    RedemptionSvc -> DB: UPDATE sponsor_rewards\nSET redeemed_this_month = redeemed_this_month + 1
+    
+    RedemptionSvc -> DB: COMMIT TRANSACTION
+    
+    == Reward Delivery ==
+    RedemptionSvc -> NotifSvc: Send Redemption Notification
+    NotifSvc -> EmailSvc: Send Reward Voucher Email
+    EmailSvc -> Donor: Email with Redemption Code/Voucher
+    
+    NotifSvc -> DB: INSERT INTO notifications\n(user_id, notification_type, title, message)
+    NotifSvc -> Donor: Push Notification\n"Reward Redeemed Successfully!"
+    
+    RedemptionSvc -> DB: UPDATE redemptions\nSET status = 'confirmed', confirmed_at = NOW(),\ndelivery_method = 'email'
+    
+    RedemptionSvc -> DonorApp: Redemption Successful
+    DonorApp -> Donor: Show Success Message with Redemption Code
+    
+else Validation Failed
+    RedemptionSvc -> DB: ROLLBACK TRANSACTION
+    RedemptionSvc -> DonorApp: Return Error Message
+    DonorApp -> Donor: Show Error (Insufficient Points/Stock/Limit Exceeded)
+end
+
+== Redemption Feedback ==
+Donor -> DonorApp: Rate & Review Redemption
+DonorApp -> RedemptionSvc: Submit Feedback
+RedemptionSvc -> DB: UPDATE redemptions\nSET feedback_rating = ?, feedback_comments = ?
+RedemptionSvc -> DonorApp: Feedback Recorded
+DonorApp -> Donor: Thank You Message
+
+@enduml 

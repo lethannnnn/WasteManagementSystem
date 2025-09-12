@@ -1,0 +1,111 @@
+@startuml 2_Pickup_Scheduling_Collection
+title MyCycle+ Pickup Scheduling & Collection Flow
+
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+participant "Pickup Service" as PickupSvc
+participant "Route Service" as RouteSvc
+participant "QR Service" as QRSvc
+participant "Database" as DB
+participant "Notification Service" as NotifSvc
+actor "Collector" as Collector
+participant "Collector App" as CollectorApp
+participant "Point Service" as PointSvc
+
+== Pickup Scheduling ==
+Donor -> DonorApp: Open Schedule Pickup
+DonorApp -> PickupSvc: Get Available Time Slots
+PickupSvc -> DB: SELECT available slots for area
+DB -> PickupSvc: Return time slots
+PickupSvc -> DonorApp: Show Available Slots
+
+Donor -> DonorApp: Select Date, Time, Items & Address
+DonorApp -> PickupSvc: Create Pickup Request
+PickupSvc -> DB: INSERT INTO pickups\n(donor_id, address_id, scheduled_date,\nscheduled_time, status, pickup_code)
+DB -> PickupSvc: Return pickup_id
+
+PickupSvc -> QRSvc: Generate QR Code
+QRSvc -> DB: INSERT INTO qrcodes\n(qr_code, qr_data, generated_at)
+QRSvc -> PickupSvc: Return QR Code
+
+PickupSvc -> DB: UPDATE pickups SET qr_code = ?\nWHERE pickup_id = ?
+
+loop For Each Item Category
+    PickupSvc -> DB: INSERT INTO pickup_items\n(pickup_id, item_category_id, weight_kg, condition_status)
+end
+
+PickupSvc -> NotifSvc: Schedule Pickup Notification
+NotifSvc -> DB: INSERT INTO notifications\n(user_id, notification_type, title, message)
+NotifSvc -> Donor: Push Notification "Pickup Scheduled"
+
+PickupSvc -> DonorApp: Pickup Scheduled Successfully
+DonorApp -> Donor: Show Confirmation with QR Code
+
+== Route Assignment & Optimization ==
+PickupSvc -> RouteSvc: Request Route Assignment
+RouteSvc -> DB: SELECT available collectors for area
+RouteSvc -> DB: SELECT pending pickups for optimization
+RouteSvc -> RouteSvc: Run Route Optimization Algorithm
+RouteSvc -> DB: INSERT INTO routes\n(collector_id, route_name, route_date,\nstatus, optimized_sequence)
+RouteSvc -> DB: UPDATE pickups SET route_id = ?\nWHERE pickup_id IN (?)
+
+RouteSvc -> DB: INSERT INTO route_optimizations\n(route_id, original_sequence, optimized_sequence,\nalgorithm_used)
+
+RouteSvc -> NotifSvc: Notify Collector of New Route
+NotifSvc -> Collector: Push Notification "New Route Assigned"
+
+== Collection Process ==
+Collector -> CollectorApp: View Assigned Routes
+CollectorApp -> RouteSvc: Get Route Details
+RouteSvc -> DB: SELECT routes, pickups, addresses\nWHERE collector_id = ?
+DB -> RouteSvc: Return route and pickup details
+RouteSvc -> CollectorApp: Display Route Map & Pickup List
+
+Collector -> CollectorApp: Navigate to Pickup Location
+Collector -> CollectorApp: Scan QR Code
+CollectorApp -> QRSvc: Verify QR Code
+QRSvc -> DB: SELECT qr_data FROM qrcodes\nWHERE qr_code = ? AND is_used = false
+DB -> QRSvc: Return QR data
+
+alt QR Code Valid
+    QRSvc -> DB: UPDATE qrcodes SET is_used = true,\nscanned_at = NOW(), scanned_by_collector = ?
+    QRSvc -> CollectorApp: QR Verified, Proceed with Collection
+    
+    Collector -> CollectorApp: Weigh & Categorize Items
+    Collector -> CollectorApp: Take Photos (Before/After)
+    Collector -> CollectorApp: Add Collection Notes
+    
+    CollectorApp -> PickupSvc: Submit Collection Data
+    PickupSvc -> DB: UPDATE pickups SET status = 'completed',\nactual_pickup_time = NOW(), total_weight_kg = ?,\ncollector_notes = ?
+    PickupSvc -> DB: UPDATE pickup_items SET weight_kg = ?,\nverification_photos = ?
+    
+    == Point Calculation & Award ==
+    PickupSvc -> PointSvc: Calculate Points
+    PointSvc -> DB: SELECT base_points_per_kg FROM item_categories
+    PointSvc -> PointSvc: Calculate Total Points
+    PointSvc -> DB: INSERT INTO point_transactions\n(user_id, pickup_id, transaction_type,\npoints_amount, description)
+    PointSvc -> DB: UPDATE donors SET total_points = total_points + ?,\npoints_earned = points_earned + ?
+    
+    PickupSvc -> DB: UPDATE pickups SET total_points_awarded = ?
+    
+    == Environmental Impact Calculation ==
+    PickupSvc -> DB: INSERT INTO environmental_impacts\n(pickup_id, co2_saved_kg, energy_saved_kwh,\ntrees_equivalent)
+    
+    PickupSvc -> NotifSvc: Notify Donor of Completion
+    NotifSvc -> Donor: Push Notification\n"Pickup Completed! +X Points Earned"
+    
+    PickupSvc -> CollectorApp: Collection Completed Successfully
+    CollectorApp -> Collector: Show Success Message
+    
+else QR Code Invalid
+    QRSvc -> CollectorApp: Invalid QR Code
+    CollectorApp -> Collector: Show Error Message
+end
+
+== Route Completion ==
+Collector -> CollectorApp: Mark Route as Completed
+CollectorApp -> RouteSvc: Complete Route
+RouteSvc -> DB: UPDATE routes SET status = 'completed',\nend_time = NOW()
+RouteSvc -> DB: UPDATE collectors SET last_active = NOW(),\ntotal_collections = total_collections + ?
+
+@enduml 

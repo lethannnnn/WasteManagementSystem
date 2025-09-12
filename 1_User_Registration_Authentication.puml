@@ -1,0 +1,75 @@
+@startuml 1_User_Registration_Authentication
+title MyCycle+ User Registration & Authentication Flow
+
+actor "New User" as NewUser
+participant "Mobile App/Web" as App
+participant "Authentication Service" as Auth
+participant "User Service" as UserSvc
+participant "Database" as DB
+participant "Notification Service" as NotifSvc
+participant "Email Service" as EmailSvc
+
+== User Registration ==
+NewUser -> App: Open Registration Form
+App -> NewUser: Display Registration Form
+
+NewUser -> App: Submit Registration Data\n(email, password, full_name, phone, user_type)
+App -> Auth: Validate Input Data
+Auth -> UserSvc: Check Email Uniqueness
+UserSvc -> DB: SELECT FROM users WHERE email = ?
+DB -> UserSvc: Return Query Result
+UserSvc -> Auth: Email Available/Taken
+
+alt Email Already Exists
+    Auth -> App: Return Error "Email already exists"
+    App -> NewUser: Show Error Message
+else Email Available
+    Auth -> Auth: Hash Password
+    Auth -> UserSvc: Create User Account
+    UserSvc -> DB: INSERT INTO users\n(user_type, email, password_hash, full_name,\nphone, verification_status, is_active, created_at)
+    DB -> UserSvc: Return user_id
+    
+    alt User Type is Donor
+        UserSvc -> DB: INSERT INTO donors\n(user_id, total_points, points_earned, points_spent, ...)
+    else User Type is Collector
+        UserSvc -> DB: INSERT INTO collectors\n(user_id, collector_code, employment_status, ...)
+    else User Type is Sponsor
+        UserSvc -> DB: INSERT INTO sponsors\n(user_id, company_name, partnership_status, ...)
+    end
+    
+    UserSvc -> NotifSvc: Send Verification Email Request
+    NotifSvc -> EmailSvc: Send Verification Email
+    EmailSvc -> NewUser: Email Verification Link
+    
+    UserSvc -> App: Registration Success
+    App -> NewUser: Show "Check Email for Verification"
+end
+
+== Email Verification ==
+NewUser -> EmailSvc: Click Verification Link
+EmailSvc -> Auth: Verify Token
+Auth -> UserSvc: Update Verification Status
+UserSvc -> DB: UPDATE users SET verification_status = 'verified'\nWHERE user_id = ?
+DB -> UserSvc: Success
+UserSvc -> App: Verification Complete
+App -> NewUser: Account Verified, Please Login
+
+== User Login ==
+NewUser -> App: Enter Login Credentials
+App -> Auth: Authenticate User
+Auth -> UserSvc: Validate Credentials
+UserSvc -> DB: SELECT password_hash FROM users\nWHERE email = ?
+DB -> UserSvc: Return Hashed Password
+Auth -> Auth: Compare Password Hash
+Auth -> UserSvc: Update Last Login
+UserSvc -> DB: UPDATE users SET last_login = NOW()\nWHERE user_id = ?
+
+alt Authentication Successful
+    Auth -> App: Return JWT Token + User Data
+    App -> NewUser: Login Success, Navigate to Dashboard
+else Authentication Failed
+    Auth -> App: Return Error "Invalid Credentials"
+    App -> NewUser: Show Error Message
+end
+
+@enduml 

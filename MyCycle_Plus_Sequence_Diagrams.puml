@@ -1,0 +1,544 @@
+@startuml MyCycle+ System Sequence Diagrams
+
+!define SEQUENCE_DIAGRAM
+
+' ====================================
+' 1. USER REGISTRATION & AUTHENTICATION FLOW
+' ====================================
+
+@startuml 1_User_Registration_Authentication
+title MyCycle+ User Registration & Authentication Flow
+
+actor "New User" as NewUser
+participant "Mobile App/Web" as App
+participant "Authentication Service" as Auth
+participant "User Service" as UserSvc
+participant "Database" as DB
+participant "Notification Service" as NotifSvc
+participant "Email Service" as EmailSvc
+
+== User Registration ==
+NewUser -> App: Open Registration Form
+App -> NewUser: Display Registration Form
+
+NewUser -> App: Submit Registration Data\n(email, password, full_name, phone, user_type)
+App -> Auth: Validate Input Data
+Auth -> UserSvc: Check Email Uniqueness
+UserSvc -> DB: SELECT FROM users WHERE email = ?
+DB -> UserSvc: Return Query Result
+UserSvc -> Auth: Email Available/Taken
+
+alt Email Already Exists
+    Auth -> App: Return Error "Email already exists"
+    App -> NewUser: Show Error Message
+else Email Available
+    Auth -> Auth: Hash Password
+    Auth -> UserSvc: Create User Account
+    UserSvc -> DB: INSERT INTO users (user_type, email, password_hash, full_name, phone, verification_status, is_active, created_at)
+    DB -> UserSvc: Return user_id
+    
+    alt User Type is Donor
+        UserSvc -> DB: INSERT INTO donors (user_id, total_points, points_earned, points_spent, ...)
+    else User Type is Collector
+        UserSvc -> DB: INSERT INTO collectors (user_id, collector_code, employment_status, ...)
+    else User Type is Sponsor
+        UserSvc -> DB: INSERT INTO sponsors (user_id, company_name, partnership_status, ...)
+    end
+    
+    UserSvc -> NotifSvc: Send Verification Email Request
+    NotifSvc -> EmailSvc: Send Verification Email
+    EmailSvc -> NewUser: Email Verification Link
+    
+    UserSvc -> App: Registration Success
+    App -> NewUser: Show "Check Email for Verification"
+end
+
+== Email Verification ==
+NewUser -> EmailSvc: Click Verification Link
+EmailSvc -> Auth: Verify Token
+Auth -> UserSvc: Update Verification Status
+UserSvc -> DB: UPDATE users SET verification_status = 'verified' WHERE user_id = ?
+DB -> UserSvc: Success
+UserSvc -> App: Verification Complete
+App -> NewUser: Account Verified, Please Login
+
+== User Login ==
+NewUser -> App: Enter Login Credentials
+App -> Auth: Authenticate User
+Auth -> UserSvc: Validate Credentials
+UserSvc -> DB: SELECT password_hash FROM users WHERE email = ?
+DB -> UserSvc: Return Hashed Password
+Auth -> Auth: Compare Password Hash
+Auth -> UserSvc: Update Last Login
+UserSvc -> DB: UPDATE users SET last_login = NOW() WHERE user_id = ?
+
+alt Authentication Successful
+    Auth -> App: Return JWT Token + User Data
+    App -> NewUser: Login Success, Navigate to Dashboard
+else Authentication Failed
+    Auth -> App: Return Error "Invalid Credentials"
+    App -> NewUser: Show Error Message
+end
+
+@enduml
+
+' ====================================
+' 2. PICKUP SCHEDULING & COLLECTION FLOW
+' ====================================
+
+@startuml 2_Pickup_Scheduling_Collection
+title MyCycle+ Pickup Scheduling & Collection Flow
+
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+participant "Pickup Service" as PickupSvc
+participant "Route Service" as RouteSvc
+participant "QR Service" as QRSvc
+participant "Database" as DB
+participant "Notification Service" as NotifSvc
+actor "Collector" as Collector
+participant "Collector App" as CollectorApp
+participant "Point Service" as PointSvc
+
+== Pickup Scheduling ==
+Donor -> DonorApp: Open Schedule Pickup
+DonorApp -> PickupSvc: Get Available Time Slots
+PickupSvc -> DB: SELECT available slots for area
+DB -> PickupSvc: Return time slots
+PickupSvc -> DonorApp: Show Available Slots
+
+Donor -> DonorApp: Select Date, Time, Items & Address
+DonorApp -> PickupSvc: Create Pickup Request
+PickupSvc -> DB: INSERT INTO pickups (donor_id, address_id, scheduled_date, scheduled_time, status, pickup_code)
+DB -> PickupSvc: Return pickup_id
+
+PickupSvc -> QRSvc: Generate QR Code
+QRSvc -> DB: INSERT INTO qrcodes (qr_code, qr_data, generated_at)
+QRSvc -> PickupSvc: Return QR Code
+
+PickupSvc -> DB: UPDATE pickups SET qr_code = ? WHERE pickup_id = ?
+
+loop For Each Item Category
+    PickupSvc -> DB: INSERT INTO pickup_items (pickup_id, item_category_id, weight_kg, condition_status)
+end
+
+PickupSvc -> NotifSvc: Schedule Pickup Notification
+NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message)
+NotifSvc -> Donor: Push Notification "Pickup Scheduled"
+
+PickupSvc -> DonorApp: Pickup Scheduled Successfully
+DonorApp -> Donor: Show Confirmation with QR Code
+
+== Route Assignment & Optimization ==
+PickupSvc -> RouteSvc: Request Route Assignment
+RouteSvc -> DB: SELECT available collectors for area
+RouteSvc -> DB: SELECT pending pickups for optimization
+RouteSvc -> RouteSvc: Run Route Optimization Algorithm
+RouteSvc -> DB: INSERT INTO routes (collector_id, route_name, route_date, status, optimized_sequence)
+RouteSvc -> DB: UPDATE pickups SET route_id = ? WHERE pickup_id IN (?)
+
+RouteSvc -> DB: INSERT INTO route_optimizations (route_id, original_sequence, optimized_sequence, algorithm_used)
+
+RouteSvc -> NotifSvc: Notify Collector of New Route
+NotifSvc -> Collector: Push Notification "New Route Assigned"
+
+== Collection Process ==
+Collector -> CollectorApp: View Assigned Routes
+CollectorApp -> RouteSvc: Get Route Details
+RouteSvc -> DB: SELECT routes, pickups, addresses WHERE collector_id = ?
+DB -> RouteSvc: Return route and pickup details
+RouteSvc -> CollectorApp: Display Route Map & Pickup List
+
+Collector -> CollectorApp: Navigate to Pickup Location
+Collector -> CollectorApp: Scan QR Code
+CollectorApp -> QRSvc: Verify QR Code
+QRSvc -> DB: SELECT qr_data FROM qrcodes WHERE qr_code = ? AND is_used = false
+DB -> QRSvc: Return QR data
+
+alt QR Code Valid
+    QRSvc -> DB: UPDATE qrcodes SET is_used = true, scanned_at = NOW(), scanned_by_collector = ?
+    QRSvc -> CollectorApp: QR Verified, Proceed with Collection
+    
+    Collector -> CollectorApp: Weigh & Categorize Items
+    Collector -> CollectorApp: Take Photos (Before/After)
+    Collector -> CollectorApp: Add Collection Notes
+    
+    CollectorApp -> PickupSvc: Submit Collection Data
+    PickupSvc -> DB: UPDATE pickups SET status = 'completed', actual_pickup_time = NOW(), total_weight_kg = ?, collector_notes = ?
+    PickupSvc -> DB: UPDATE pickup_items SET weight_kg = ?, verification_photos = ?
+    
+    == Point Calculation & Award ==
+    PickupSvc -> PointSvc: Calculate Points
+    PointSvc -> DB: SELECT base_points_per_kg FROM item_categories
+    PointSvc -> PointSvc: Calculate Total Points
+    PointSvc -> DB: INSERT INTO point_transactions (user_id, pickup_id, transaction_type, points_amount, description)
+    PointSvc -> DB: UPDATE donors SET total_points = total_points + ?, points_earned = points_earned + ?
+    
+    PickupSvc -> DB: UPDATE pickups SET total_points_awarded = ?
+    
+    == Environmental Impact Calculation ==
+    PickupSvc -> DB: INSERT INTO environmental_impacts (pickup_id, co2_saved_kg, energy_saved_kwh, trees_equivalent)
+    
+    PickupSvc -> NotifSvc: Notify Donor of Completion
+    NotifSvc -> Donor: Push Notification "Pickup Completed! +X Points Earned"
+    
+    PickupSvc -> CollectorApp: Collection Completed Successfully
+    CollectorApp -> Collector: Show Success Message
+    
+else QR Code Invalid
+    QRSvc -> CollectorApp: Invalid QR Code
+    CollectorApp -> Collector: Show Error Message
+end
+
+== Route Completion ==
+Collector -> CollectorApp: Mark Route as Completed
+CollectorApp -> RouteSvc: Complete Route
+RouteSvc -> DB: UPDATE routes SET status = 'completed', end_time = NOW()
+RouteSvc -> DB: UPDATE collectors SET last_active = NOW(), total_collections = total_collections + ?
+
+@enduml
+
+' ====================================
+' 3. REWARDS & REDEMPTION FLOW
+' ====================================
+
+@startuml 3_Rewards_Redemption
+title MyCycle+ Rewards & Redemption Flow
+
+actor "Sponsor" as Sponsor
+participant "Sponsor Portal" as SponsorPortal
+participant "Reward Service" as RewardSvc
+participant "Database" as DB
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+participant "Redemption Service" as RedemptionSvc
+participant "Point Service" as PointSvc
+participant "Notification Service" as NotifSvc
+participant "Email Service" as EmailSvc
+
+== Sponsor Creates Reward ==
+Sponsor -> SponsorPortal: Create New Reward
+SponsorPortal -> RewardSvc: Submit Reward Details
+RewardSvc -> DB: INSERT INTO rewards (sponsor_id, reward_name, description, points_required, category, stock_quantity, ...)
+DB -> RewardSvc: Return reward_id
+RewardSvc -> DB: INSERT INTO sponsor_rewards (sponsor_id, reward_id, cost_per_redemption, monthly_quota)
+RewardSvc -> SponsorPortal: Reward Created Successfully
+SponsorPortal -> Sponsor: Show Success Message
+
+== Donor Browses Rewards ==
+Donor -> DonorApp: Open Rewards Page
+DonorApp -> RewardSvc: Get Available Rewards
+RewardSvc -> DB: SELECT rewards WHERE is_active = true AND stock_quantity > 0
+DB -> RewardSvc: Return active rewards list
+RewardSvc -> PointSvc: Get Donor Points Balance
+PointSvc -> DB: SELECT total_points FROM donors WHERE user_id = ?
+DB -> PointSvc: Return points balance
+RewardSvc -> DonorApp: Display Rewards with Eligibility Status
+DonorApp -> Donor: Show Rewards Catalog
+
+== Reward Redemption Process ==
+Donor -> DonorApp: Select Reward to Redeem
+DonorApp -> RedemptionSvc: Request Redemption
+RedemptionSvc -> DB: BEGIN TRANSACTION
+
+' Validation Checks
+RedemptionSvc -> DB: SELECT total_points FROM donors WHERE user_id = ?
+RedemptionSvc -> DB: SELECT points_required, stock_quantity, daily_limit, user_limit FROM rewards WHERE reward_id = ?
+RedemptionSvc -> DB: SELECT COUNT(*) FROM redemptions WHERE donor_id = ? AND reward_id = ? AND DATE(redeemed_at) = CURRENT_DATE()
+RedemptionSvc -> DB: SELECT COUNT(*) FROM redemptions WHERE donor_id = ? AND reward_id = ?
+
+alt Validation Successful (Enough Points, Stock Available, Within Limits)
+    ' Deduct Points
+    RedemptionSvc -> DB: UPDATE donors SET total_points = total_points - ?, points_spent = points_spent + ?
+    
+    ' Create Point Transaction
+    RedemptionSvc -> DB: INSERT INTO point_transactions (user_id, redemption_id, transaction_type, points_amount, description)
+    
+    ' Create Redemption Record
+    RedemptionSvc -> DB: INSERT INTO redemptions (donor_id, reward_id, points_spent, redemption_code, status, redeemed_at)
+    DB -> RedemptionSvc: Return redemption_id
+    
+    ' Update Reward Stock
+    RedemptionSvc -> DB: UPDATE rewards SET stock_quantity = stock_quantity - 1, redeemed_count = redeemed_count + 1
+    
+    ' Update Sponsor Quota
+    RedemptionSvc -> DB: UPDATE sponsor_rewards SET redeemed_this_month = redeemed_this_month + 1
+    
+    RedemptionSvc -> DB: COMMIT TRANSACTION
+    
+    == Reward Delivery ==
+    RedemptionSvc -> NotifSvc: Send Redemption Notification
+    NotifSvc -> EmailSvc: Send Reward Voucher Email
+    EmailSvc -> Donor: Email with Redemption Code/Voucher
+    
+    NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message)
+    NotifSvc -> Donor: Push Notification "Reward Redeemed Successfully!"
+    
+    RedemptionSvc -> DB: UPDATE redemptions SET status = 'confirmed', confirmed_at = NOW(), delivery_method = 'email'
+    
+    RedemptionSvc -> DonorApp: Redemption Successful
+    DonorApp -> Donor: Show Success Message with Redemption Code
+    
+else Validation Failed
+    RedemptionSvc -> DB: ROLLBACK TRANSACTION
+    RedemptionSvc -> DonorApp: Return Error Message
+    DonorApp -> Donor: Show Error (Insufficient Points/Stock/Limit Exceeded)
+end
+
+== Redemption Feedback ==
+Donor -> DonorApp: Rate & Review Redemption
+DonorApp -> RedemptionSvc: Submit Feedback
+RedemptionSvc -> DB: UPDATE redemptions SET feedback_rating = ?, feedback_comments = ?
+RedemptionSvc -> DonorApp: Feedback Recorded
+DonorApp -> Donor: Thank You Message
+
+@enduml
+
+' ====================================
+' 4. ADMIN ANALYTICS & MANAGEMENT FLOW
+' ====================================
+
+@startuml 4_Admin_Analytics_Management
+title MyCycle+ Admin Analytics & Management Flow
+
+actor "Admin" as Admin
+participant "Admin Dashboard" as AdminDash
+participant "Analytics Service" as AnalyticsSvc
+participant "User Service" as UserSvc
+participant "Database" as DB
+participant "Report Service" as ReportSvc
+participant "Notification Service" as NotifSvc
+
+== Admin Login & Dashboard ==
+Admin -> AdminDash: Login to Admin Panel
+AdminDash -> UserSvc: Authenticate Admin
+UserSvc -> DB: Verify admin credentials and permissions
+AdminDash -> AnalyticsSvc: Get Dashboard Metrics
+AnalyticsSvc -> DB: Execute Analytics Queries
+
+par Dashboard Data Collection
+    AnalyticsSvc -> DB: SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURRENT_DATE()
+and
+    AnalyticsSvc -> DB: SELECT SUM(total_weight_kg) FROM pickups WHERE DATE(actual_pickup_time) = CURRENT_DATE()
+and
+    AnalyticsSvc -> DB: SELECT COUNT(*) FROM redemptions WHERE DATE(redeemed_at) = CURRENT_DATE()
+and
+    AnalyticsSvc -> DB: SELECT COUNT(*) FROM donors WHERE is_active = true
+and
+    AnalyticsSvc -> DB: SELECT COUNT(*) FROM collectors WHERE employment_status = 'active'
+end
+
+AnalyticsSvc -> AdminDash: Return Aggregated Metrics
+AdminDash -> Admin: Display Dashboard Overview
+
+== User Management ==
+Admin -> AdminDash: Access User Management
+AdminDash -> UserSvc: Get Users List with Filters
+UserSvc -> DB: SELECT users, donors, collectors with pagination
+DB -> UserSvc: Return user data
+UserSvc -> AdminDash: Display Users Table
+
+Admin -> AdminDash: Search/Filter Users
+AdminDash -> UserSvc: Apply Search Criteria
+UserSvc -> DB: SELECT users WHERE criteria LIKE '%search%'
+
+Admin -> AdminDash: View User Details
+AdminDash -> UserSvc: Get User Complete Profile
+UserSvc -> DB: SELECT user details, transaction history, redemption history
+UserSvc -> AdminDash: Display User Profile
+
+alt User Action Required
+    Admin -> AdminDash: Suspend/Activate User
+    AdminDash -> UserSvc: Update User Status
+    UserSvc -> DB: UPDATE users SET is_active = ?, verification_status = ?
+    UserSvc -> NotifSvc: Send Status Change Notification
+    NotifSvc -> DB: INSERT INTO notifications
+end
+
+== Rewards Management ==
+Admin -> AdminDash: Access Rewards Management
+AdminDash -> AnalyticsSvc: Get Rewards Analytics
+AnalyticsSvc -> DB: SELECT rewards with redemption statistics
+AdminDash -> Admin: Display Rewards Dashboard
+
+Admin -> AdminDash: Review Reward Performance
+AdminDash -> AnalyticsSvc: Get Detailed Reward Metrics
+AnalyticsSvc -> DB: SELECT redemption trends, popular categories, sponsor performance
+AnalyticsSvc -> AdminDash: Return Reward Analytics
+
+Admin -> AdminDash: Approve/Reject New Rewards
+AdminDash -> UserSvc: Update Reward Status
+UserSvc -> DB: UPDATE rewards SET is_active = ?
+UserSvc -> NotifSvc: Notify Sponsor of Status Change
+
+== System Analytics Generation ==
+Admin -> AdminDash: Generate System Report
+AdminDash -> AnalyticsSvc: Create Comprehensive Report
+AnalyticsSvc -> DB: Execute Multiple Analytics Queries
+
+par Report Data Collection
+    AnalyticsSvc -> DB: User Growth Analytics
+and
+    AnalyticsSvc -> DB: Recycling Volume Trends
+and
+    AnalyticsSvc -> DB: Reward Redemption Patterns
+and
+    AnalyticsSvc -> DB: Collector Performance Metrics
+and
+    AnalyticsSvc -> DB: Environmental Impact Calculations
+and
+    AnalyticsSvc -> DB: Regional Performance Breakdown
+end
+
+AnalyticsSvc -> ReportSvc: Compile Report Data
+ReportSvc -> DB: INSERT INTO system_analytics (date, metric_type, total_pickups, total_weight_kg, ...)
+ReportSvc -> AdminDash: Return Generated Report
+AdminDash -> Admin: Display/Download Report
+
+== Audit Log Monitoring ==
+Admin -> AdminDash: View Audit Logs
+AdminDash -> DB: SELECT FROM audit_logs ORDER BY changed_at DESC
+DB -> AdminDash: Return Recent System Changes
+AdminDash -> Admin: Display Audit Trail
+
+@enduml
+
+' ====================================
+' 5. BADGE & GAMIFICATION FLOW
+' ====================================
+
+@startuml 5_Badge_Gamification
+title MyCycle+ Badge & Gamification Flow
+
+participant "System Events" as Events
+participant "Badge Service" as BadgeSvc
+participant "Database" as DB
+participant "Point Service" as PointSvc
+participant "Leaderboard Service" as LeaderboardSvc
+participant "Notification Service" as NotifSvc
+actor "Donor" as Donor
+participant "Donor App" as DonorApp
+
+== Badge Trigger Events ==
+Events -> BadgeSvc: Pickup Completed Event
+BadgeSvc -> DB: Get User Activity Metrics
+DB -> BadgeSvc: Return user statistics
+
+loop Check All Badge Criteria
+    BadgeSvc -> DB: SELECT badges WHERE is_active = true
+    BadgeSvc -> BadgeSvc: Evaluate Badge Criteria
+    
+    alt Badge Criteria Met
+        BadgeSvc -> DB: SELECT FROM user_badges WHERE user_id = ? AND badge_id = ?
+        
+        alt Badge Not Yet Earned
+            BadgeSvc -> DB: INSERT INTO user_badges (user_id, badge_id, earned_at, earning_context)
+            
+            ' Award bonus points for badge
+            BadgeSvc -> PointSvc: Award Badge Bonus Points
+            PointSvc -> DB: INSERT INTO point_transactions (user_id, transaction_type, points_amount, description)
+            PointSvc -> DB: UPDATE donors SET total_points = total_points + ?, points_earned = points_earned + ?
+            
+            BadgeSvc -> NotifSvc: Send Badge Notification
+            NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message)
+            NotifSvc -> Donor: Push Notification "New Badge Earned!"
+        end
+    end
+end
+
+== Leaderboard Update ==
+Events -> LeaderboardSvc: Update Leaderboard Trigger
+LeaderboardSvc -> DB: Get Current Period Rankings
+
+par Leaderboard Calculations
+    LeaderboardSvc -> DB: Calculate Weekly Rankings
+and
+    LeaderboardSvc -> DB: Calculate Monthly Rankings
+and
+    LeaderboardSvc -> DB: Calculate Yearly Rankings
+end
+
+LeaderboardSvc -> DB: UPDATE leaderboard SET rank_position = ?, total_points = ?, total_weight_kg = ?
+
+== User Views Gamification ==
+Donor -> DonorApp: Open Profile/Badges
+DonorApp -> BadgeSvc: Get User Badges & Progress
+BadgeSvc -> DB: SELECT user_badges, badges WHERE user_id = ?
+BadgeSvc -> DB: SELECT user progress towards unearned badges
+BadgeSvc -> DonorApp: Return Badges & Progress Data
+
+Donor -> DonorApp: View Leaderboard
+DonorApp -> LeaderboardSvc: Get Leaderboard Rankings
+LeaderboardSvc -> DB: SELECT leaderboard WHERE period_type = 'weekly' ORDER BY rank_position
+LeaderboardSvc -> DonorApp: Return Rankings
+DonorApp -> Donor: Display Leaderboard
+
+@enduml
+
+' ====================================
+' 6. NOTIFICATION SYSTEM FLOW
+' ====================================
+
+@startuml 6_Notification_System
+title MyCycle+ Notification System Flow
+
+participant "System Events" as Events
+participant "Notification Service" as NotifSvc
+participant "Database" as DB
+participant "Push Service" as PushSvc
+participant "Email Service" as EmailSvc
+participant "SMS Service" as SMSSvc
+actor "User" as User
+participant "Mobile App" as App
+
+== Notification Trigger ==
+Events -> NotifSvc: System Event Triggered\n(Pickup Scheduled, Reward Available, etc.)
+NotifSvc -> DB: Get User Notification Preferences
+DB -> NotifSvc: Return notification_preferences JSON
+
+NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message, priority, category)
+DB -> NotifSvc: Return notification_id
+
+== Multi-Channel Delivery ==
+par Notification Delivery
+    alt Push Notifications Enabled
+        NotifSvc -> PushSvc: Send Push Notification
+        PushSvc -> User: Mobile Push Notification
+        NotifSvc -> DB: UPDATE notifications SET is_pushed = true
+    end
+and
+    alt Email Notifications Enabled
+        NotifSvc -> EmailSvc: Send Email Notification
+        EmailSvc -> User: Email Notification
+    end
+and
+    alt SMS Notifications Enabled (High Priority)
+        NotifSvc -> SMSSvc: Send SMS
+        SMSSvc -> User: SMS Notification
+    end
+end
+
+NotifSvc -> DB: UPDATE notifications SET sent_at = NOW()
+
+== User Notification Interaction ==
+User -> App: Open Notifications
+App -> NotifSvc: Get User Notifications
+NotifSvc -> DB: SELECT notifications WHERE user_id = ? ORDER BY sent_at DESC
+DB -> NotifSvc: Return notifications list
+NotifSvc -> App: Display Notifications
+
+User -> App: Read Notification
+App -> NotifSvc: Mark as Read
+NotifSvc -> DB: UPDATE notifications SET is_read = true, read_at = NOW()
+
+alt Notification Has Action
+    User -> App: Tap Notification Action
+    App -> App: Navigate to action_url
+end
+
+== Notification Cleanup ==
+NotifSvc -> DB: DELETE FROM notifications WHERE expires_at < NOW() AND is_read = true
+
+@enduml
+
+@enduml 

@@ -348,7 +348,7 @@ function App() {
             <a href="#contact">Contact</a>
             <button className="btn-primary">Get Started</button>
           </div>
-        </div>
+      </div>
       </nav>
 
       {/* Hero Section */}
@@ -454,7 +454,7 @@ function App() {
               <p>Accumulate points and redeem them for rewards from our extensive partner network.</p>
             </div>
           </div>
-        </div>
+      </div>
       </section>
 
       {/* Sponsors Section */}

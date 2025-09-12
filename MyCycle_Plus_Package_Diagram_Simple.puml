@@ -1,0 +1,126 @@
+@startuml MyCycle_Plus_Package_Diagram_Simple
+!theme plain
+title MyCycle+ System Architecture - 4-Layer Simplified View
+
+' ================================
+' STYLING FOR BETTER VISIBILITY
+' ================================
+skinparam ArrowThickness 2
+skinparam ArrowColor #2E8B57
+skinparam packageBorderThickness 2
+skinparam componentBorderThickness 1
+skinparam shadowing false
+
+' ================================
+' PRESENTATION LAYER
+' ================================
+package "Presentation Layer" as PresentationLayer <<Layer>> {
+    component [Donor Mobile App] as DonorApp
+    component [Collector Mobile App] as CollectorApp
+    component [Admin Web Dashboard] as AdminWeb
+    component [Sponsor Partner Portal] as SponsorWeb
+}
+
+' ================================
+' BUSINESS LAYER
+' ================================
+package "Business Layer" as BusinessLayer <<Layer>> {
+    component [User Account Management] as UserAccount
+    component [Pickup Appointment Management] as PickupAppointment
+    component [Collection Management] as Collection
+    component [Rewards & Redemption Management] as Rewards
+    component [Admin Management] as Admin
+    component [Sponsor Partner Management] as SponsorPartner
+    component [Business Rules Engine] as BusinessRules
+    component [Workflow Engine] as WorkflowEngine
+}
+
+' ================================
+' DATA LAYER
+' ================================
+package "Data Layer" as DataLayer <<Database>> {
+    database "MyCycle+ Database" as MainDB {
+        component [User Data]
+        component [Pickup Data]
+        component [Rewards Data]
+        component [Analytics Data]
+    }
+    component [Data Access Layer] as DataAccess
+    component [Caching System] as CacheSystem
+}
+
+' ================================
+' CROSS-CUTTING LAYER
+' ================================
+package "Cross-cutting Layer" as CrossCuttingLayer <<Node>> {
+    component [Security & Authentication] as Security
+    component [Logging & Monitoring] as Logging
+    component [Notification Engine] as Notification
+    component [External API Gateway] as APIGateway
+    component [Configuration Management] as Configuration
+}
+
+' ================================
+' PRESENTATION TO BUSINESS DEPENDENCIES
+' ================================
+DonorApp -[#FF6B35,thickness=3]-> UserAccount
+DonorApp -[#FF6B35,thickness=3]-> PickupAppointment
+DonorApp -[#FF6B35,thickness=3]-> Rewards
+
+CollectorApp -[#1E88E5,thickness=3]-> UserAccount
+CollectorApp -[#1E88E5,thickness=3]-> Collection
+CollectorApp -[#1E88E5,thickness=3]-> PickupAppointment
+
+AdminWeb -[#8E24AA,thickness=3]-> UserAccount
+AdminWeb -[#8E24AA,thickness=3]-> Admin
+AdminWeb -[#8E24AA,thickness=3]-> Rewards
+
+SponsorWeb -[#43A047,thickness=3]-> UserAccount
+SponsorWeb -[#43A047,thickness=3]-> SponsorPartner
+SponsorWeb -[#43A047,thickness=3]-> Rewards
+
+' ================================
+' BUSINESS TO DATA DEPENDENCIES
+' ================================
+UserAccount -[#4A90E2,thickness=2]-> DataAccess
+PickupAppointment -[#4A90E2,thickness=2]-> DataAccess
+Collection -[#4A90E2,thickness=2]-> DataAccess
+Rewards -[#4A90E2,thickness=2]-> DataAccess
+Admin -[#4A90E2,thickness=2]-> DataAccess
+SponsorPartner -[#4A90E2,thickness=2]-> DataAccess
+
+BusinessRules -[#4A90E2,thickness=2]-> DataAccess
+WorkflowEngine -[#4A90E2,thickness=2]-> DataAccess
+
+' ================================
+' DATA ACCESS TO DATABASE
+' ================================
+DataAccess -[#7B68EE,thickness=2]-> MainDB
+
+' ================================
+' CROSS-CUTTING DEPENDENCIES
+' ================================
+' All layers use cross-cutting services
+PresentationLayer ..[#9C27B0,thickness=1]-> Security
+BusinessLayer ..[#9C27B0,thickness=1]-> Security
+BusinessLayer ..[#9C27B0,thickness=1]-> Logging
+BusinessLayer ..[#9C27B0,thickness=1]-> Notification
+DataLayer ..[#9C27B0,thickness=1]-> Security
+
+' External integrations through API Gateway
+BusinessLayer -[#FF8F00,thickness=2]-> APIGateway
+
+' Configuration used by all layers
+PresentationLayer ..[#00BCD4,thickness=1]-> Configuration
+BusinessLayer ..[#00BCD4,thickness=1]-> Configuration
+DataLayer ..[#00BCD4,thickness=1]-> Configuration
+
+' ================================
+' INTER-BUSINESS LAYER DEPENDENCIES
+' ================================
+PickupAppointment -[#2E8B57,thickness=2]-> Collection : "Route Assignment"
+Rewards -[#2E8B57,thickness=2]-> PickupAppointment : "Point Calculation"
+Admin -[#2E8B57,thickness=2]-> UserAccount : "User Management"
+SponsorPartner -[#2E8B57,thickness=2]-> Rewards : "Reward Creation"
+
+@enduml 

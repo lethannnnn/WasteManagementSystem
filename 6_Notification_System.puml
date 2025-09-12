@@ -1,0 +1,151 @@
+@startuml 6_Notification_System
+title MyCycle+ Notification System Flow
+
+participant "System Events" as Events
+participant "Notification Service" as NotifSvc
+participant "Database" as DB
+participant "Push Service" as PushSvc
+participant "Email Service" as EmailSvc
+participant "SMS Service" as SMSSvc
+actor "User" as User
+participant "Mobile App" as App
+
+== Notification Trigger ==
+Events -> NotifSvc: System Event Triggered (Pickup Scheduled, Reward Available, etc.)
+NotifSvc -> DB: Get User Notification Preferences
+DB -> NotifSvc: Return notification_preferences JSON
+
+NotifSvc -> DB: INSERT INTO notifications (user_id, notification_type, title, message, priority, category)
+DB -> NotifSvc: Return notification_id
+
+== Multi-Channel Delivery ==
+note over NotifSvc, SMSSvc: Notification Delivery (Multi-Channel)
+
+alt Push Notifications Enabled
+    NotifSvc -> PushSvc: Send Push Notification
+    PushSvc -> User: Mobile Push Notification
+    NotifSvc -> DB: UPDATE notifications SET is_pushed = true
+end
+
+alt Email Notifications Enabled
+    NotifSvc -> EmailSvc: Send Email Notification
+    EmailSvc -> User: Email Notification
+end
+
+alt SMS Notifications Enabled (High Priority)
+    NotifSvc -> SMSSvc: Send SMS
+    SMSSvc -> User: SMS Notification
+end
+
+NotifSvc -> DB: UPDATE notifications SET sent_at = NOW()
+
+== Notification Categories ==
+alt Pickup Related
+    Events -> NotifSvc: Pickup Scheduled
+    NotifSvc -> User: "Your pickup is scheduled for tomorrow at 9:30 AM"
+    
+    Events -> NotifSvc: Pickup Completed
+    NotifSvc -> User: "Pickup completed! You earned 75 points"
+    
+    Events -> NotifSvc: Pickup Cancelled
+    NotifSvc -> User: "Your pickup has been cancelled. Please reschedule."
+    
+else Reward Related
+    Events -> NotifSvc: New Reward Available
+    NotifSvc -> User: "New RM10 Grab voucher available!"
+    
+    Events -> NotifSvc: Reward Redeemed
+    NotifSvc -> User: "Reward redeemed successfully! Check your email."
+    
+    Events -> NotifSvc: Reward Expiring
+    NotifSvc -> User: "Your reward expires in 3 days!"
+    
+else Gamification Related
+    Events -> NotifSvc: Badge Earned
+    NotifSvc -> User: "Congratulations! You earned a new badge!"
+    
+    Events -> NotifSvc: Level Up
+    NotifSvc -> User: "Level up! You're now an Eco Warrior!"
+    
+    Events -> NotifSvc: Leaderboard Update
+    NotifSvc -> User: "You moved up to #5 on the weekly leaderboard!"
+    
+else System Related
+    Events -> NotifSvc: Account Status Change
+    NotifSvc -> User: "Your account has been verified!"
+    
+    Events -> NotifSvc: System Maintenance
+    NotifSvc -> User: "Scheduled maintenance tonight 2-4 AM"
+end
+
+== User Notification Interaction ==
+User -> App: Open Notifications
+App -> NotifSvc: Get User Notifications
+NotifSvc -> DB: SELECT notifications WHERE user_id = ? ORDER BY sent_at DESC LIMIT 50
+DB -> NotifSvc: Return notifications list
+NotifSvc -> App: Display Notifications
+
+User -> App: Read Notification
+App -> NotifSvc: Mark as Read
+NotifSvc -> DB: UPDATE notifications SET is_read = true, read_at = NOW()
+
+alt Notification Has Action
+    User -> App: Tap Notification Action
+    App -> App: Navigate to action_url
+    
+    alt Pickup Notification
+        App -> App: Navigate to Pickup Details
+    else Reward Notification
+        App -> App: Navigate to Rewards Page
+    else Badge Notification
+        App -> App: Navigate to Profile/Badges
+    end
+end
+
+== Notification Preferences Management ==
+User -> App: Open Notification Settings
+App -> NotifSvc: Get Current Preferences
+NotifSvc -> DB: SELECT notification_preferences FROM donors WHERE user_id = ?
+DB -> NotifSvc: Return current settings
+NotifSvc -> App: Display Preferences
+
+User -> App: Update Preferences
+App -> NotifSvc: Save New Preferences
+NotifSvc -> DB: UPDATE donors SET notification_preferences = ? WHERE user_id = ?
+
+== Smart Notification Timing ==
+NotifSvc -> DB: Get User Activity Patterns
+NotifSvc -> NotifSvc: Calculate Optimal Send Time
+
+alt Peak Activity Hours (9 AM - 6 PM)
+    NotifSvc -> NotifSvc: Send Immediately
+else Off-Peak Hours
+    NotifSvc -> NotifSvc: Queue for Next Peak Period
+    NotifSvc -> DB: UPDATE notifications SET scheduled_send_time = ?
+end
+
+== Notification Analytics ==
+NotifSvc -> DB: Track Notification Metrics
+NotifSvc -> DB: INSERT INTO notification_analytics (notification_id, opened_at, clicked_at, action_taken)
+
+== Notification Cleanup ==
+NotifSvc -> DB: DELETE FROM notifications WHERE expires_at < NOW() AND is_read = true
+
+== Batch Notifications ==
+alt Daily Digest
+    NotifSvc -> DB: Get Daily Activity Summary
+    NotifSvc -> EmailSvc: Send Daily Digest Email
+    EmailSvc -> User: Daily Activity Summary Email
+    
+else Weekly Report
+    NotifSvc -> DB: Get Weekly Performance Report
+    NotifSvc -> EmailSvc: Send Weekly Report
+    EmailSvc -> User: Weekly Progress Report Email
+    
+else Marketing Campaigns
+    NotifSvc -> DB: Get Targeted User Segments
+    NotifSvc -> EmailSvc: Send Promotional Emails
+    EmailSvc -> User: Promotional Campaign Email
+end
+
+@enduml 

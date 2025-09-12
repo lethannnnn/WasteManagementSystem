@@ -1,0 +1,319 @@
+@startuml MyCycle_Plus_Component_Diagram
+!theme plain
+title MyCycle+ System - Detailed Component Diagram
+
+' ================================
+' STYLING FOR BETTER VISIBILITY  
+' ================================
+skinparam component {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+    ArrowColor DarkBlue
+}
+skinparam interface {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+skinparam package {
+    BackgroundColor LightGray
+    BorderColor DarkGray
+}
+skinparam ArrowThickness 2
+
+' ================================
+' PRESENTATION LAYER COMPONENTS
+' ================================
+package "Presentation Layer" {
+    
+    component [Donor Mobile App] as DonorApp
+    component [Authentication UI] as DonorAuth
+    component [Dashboard UI] as DonorDash
+    component [Pickup Scheduler] as DonorPickup
+    component [Rewards UI] as DonorRewards
+    component [Profile Manager] as DonorProfile
+    
+    component [Collector Mobile App] as CollectorApp
+    component [Route Viewer] as CollectorRoute
+    component [Map Interface] as CollectorMap
+    component [Status Updater] as CollectorStatus
+    component [QR Scanner] as CollectorQR
+    
+    component [Admin Web Dashboard] as AdminWeb
+    component [User Management Panel] as AdminUsers
+    component [Analytics Dashboard] as AdminAnalytics
+    component [Rewards Configuration] as AdminRewards
+    component [System Monitor] as AdminMonitor
+    
+    component [Sponsor Partner Portal] as SponsorWeb
+    component [Registration Form] as SponsorReg
+    component [Campaign Manager] as SponsorCampaign
+    component [Analytics Viewer] as SponsorAnalytics
+}
+
+' ================================
+' BUSINESS LAYER COMPONENTS
+' ================================
+package "Business Layer" {
+    
+    component [User Account Service] as UserService
+    component [Authentication Manager] as AuthManager
+    component [Profile Manager] as ProfileManager
+    component [Role Manager] as RoleManager
+    
+    component [Pickup Management Service] as PickupService
+    component [Appointment Scheduler] as Scheduler
+    component [Route Optimizer] as RouteOptimizer
+    component [Pickup Tracker] as PickupTracker
+    
+    component [Collection Service] as CollectionService
+    component [Route Manager] as RouteManager
+    component [Status Manager] as StatusManager
+    component [QR Verifier] as QRVerifier
+    
+    component [Rewards Service] as RewardsService
+    component [Points Calculator] as PointsCalc
+    component [Redemption Engine] as RedemptionEngine
+    component [Badge Manager] as BadgeManager
+    
+    component [Admin Service] as AdminService
+    component [User Manager] as UserManager
+    component [System Analytics] as SystemAnalytics
+    component [Report Generator] as ReportGen
+    
+    component [Sponsor Service] as SponsorService
+    component [Partnership Manager] as PartnershipMgr
+    component [Campaign Engine] as CampaignEngine
+    component [Sponsor Analytics] as SponsorAnalyticsEngine
+}
+
+' ================================
+' DATA LAYER COMPONENTS
+' ================================
+package "Data Layer" {
+    
+    component [Data Access Layer] as DataAccess
+    component [User Repository] as UserRepo
+    component [Pickup Repository] as PickupRepo
+    component [Rewards Repository] as RewardsRepo
+    component [Analytics Repository] as AnalyticsRepo
+    
+    component [Caching System] as CacheSystem
+    component [Redis Cache] as RedisCache
+    component [Memory Cache] as MemoryCache
+    component [Cache Manager] as CacheManager
+    
+    database "MyCycle+ Database" as MainDB
+    component [User Data Store] as UserDB
+    component [Pickup Data Store] as PickupDB
+    component [Rewards Data Store] as RewardsDB
+    component [Analytics Data Store] as AnalyticsDB
+}
+
+' ================================
+' CROSS-CUTTING COMPONENTS
+' ================================
+package "Cross-cutting Layer" {
+    
+    component [Security Service] as SecurityService
+    component [JWT Manager] as JWTManager
+    component [Encryption Service] as EncryptionService
+    component [Authorization Engine] as AuthEngine
+    
+    component [Notification Service] as NotificationService
+    component [Push Notification] as PushNotification
+    component [Email Service] as EmailService
+    component [SMS Service] as SMSService
+    
+    component [Logging Service] as LoggingService
+    component [Application Logger] as AppLogger
+    component [Error Tracker] as ErrorTracker
+    component [Performance Monitor] as PerfMonitor
+    
+    component [External API Gateway] as APIGateway
+    component [Google Maps API] as GoogleMapsAPI
+    component [Payment Gateway] as PaymentGateway
+    component [Third Party APIs] as ThirdPartyAPIs
+}
+
+' ================================
+' INTERFACES DEFINITION
+' ================================
+interface "IUserManagement" as IUserMgmt
+interface "IPickupManagement" as IPickupMgmt
+interface "IRewardsManagement" as IRewardsMgmt
+interface "INotification" as INotify
+interface "ISecurity" as ISecurity
+interface "IDataAccess" as IDataAccess
+interface "ICaching" as ICaching
+interface "IExternalAPI" as IExternalAPI
+
+' ================================
+' PRESENTATION TO BUSINESS CONNECTIONS
+' ================================
+DonorApp --> IUserMgmt
+DonorApp --> IPickupMgmt
+DonorApp --> IRewardsMgmt
+
+CollectorApp --> IUserMgmt
+CollectorApp --> IPickupMgmt
+
+AdminWeb --> IUserMgmt
+AdminWeb --> IRewardsMgmt
+
+SponsorWeb --> IUserMgmt
+
+' Interface implementations
+UserService .up.|> IUserMgmt
+PickupService .up.|> IPickupMgmt
+RewardsService .up.|> IRewardsMgmt
+
+' ================================
+' BUSINESS TO DATA CONNECTIONS
+' ================================
+UserService --> IDataAccess
+PickupService --> IDataAccess
+CollectionService --> IDataAccess
+RewardsService --> IDataAccess
+AdminService --> IDataAccess
+SponsorService --> IDataAccess
+
+DataAccess .up.|> IDataAccess
+
+' ================================
+' CROSS-CUTTING CONNECTIONS
+' ================================
+UserService --> ISecurity
+PickupService --> ISecurity
+RewardsService --> ISecurity
+
+SecurityService .up.|> ISecurity
+
+UserService --> INotify
+PickupService --> INotify
+RewardsService --> INotify
+
+NotificationService .up.|> INotify
+
+DataAccess --> ICaching
+CacheSystem .up.|> ICaching
+
+PickupService --> IExternalAPI
+APIGateway .up.|> IExternalAPI
+
+' ================================
+' INTERNAL COMPONENT CONNECTIONS
+' ================================
+
+' Presentation layer internal connections
+DonorAuth .-> DonorApp
+DonorDash .-> DonorApp
+DonorPickup .-> DonorApp
+DonorRewards .-> DonorApp
+DonorProfile .-> DonorApp
+
+CollectorRoute .-> CollectorApp
+CollectorMap .-> CollectorApp
+CollectorStatus .-> CollectorApp
+CollectorQR .-> CollectorApp
+
+AdminUsers .-> AdminWeb
+AdminAnalytics .-> AdminWeb
+AdminRewards .-> AdminWeb
+AdminMonitor .-> AdminWeb
+
+SponsorReg .-> SponsorWeb
+SponsorCampaign .-> SponsorWeb
+SponsorAnalytics .-> SponsorWeb
+
+' Business layer internal connections
+AuthManager .-> UserService
+ProfileManager .-> UserService
+RoleManager .-> UserService
+
+Scheduler .-> PickupService
+RouteOptimizer .-> PickupService
+PickupTracker .-> PickupService
+
+RouteManager .-> CollectionService
+StatusManager .-> CollectionService
+QRVerifier .-> CollectionService
+
+PointsCalc .-> RewardsService
+RedemptionEngine .-> RewardsService
+BadgeManager .-> RewardsService
+
+UserManager .-> AdminService
+SystemAnalytics .-> AdminService
+ReportGen .-> AdminService
+
+PartnershipMgr .-> SponsorService
+CampaignEngine .-> SponsorService
+SponsorAnalyticsEngine .-> SponsorService
+
+' Data layer internal connections
+UserRepo .-> DataAccess
+PickupRepo .-> DataAccess
+RewardsRepo .-> DataAccess
+AnalyticsRepo .-> DataAccess
+
+RedisCache .-> CacheSystem
+MemoryCache .-> CacheSystem
+CacheManager .-> CacheSystem
+
+UserDB .-> MainDB
+PickupDB .-> MainDB
+RewardsDB .-> MainDB
+AnalyticsDB .-> MainDB
+
+' Cross-cutting layer internal connections
+JWTManager .-> SecurityService
+EncryptionService .-> SecurityService
+AuthEngine .-> SecurityService
+
+PushNotification .-> NotificationService
+EmailService .-> NotificationService
+SMSService .-> NotificationService
+
+AppLogger .-> LoggingService
+ErrorTracker .-> LoggingService
+PerfMonitor .-> LoggingService
+
+GoogleMapsAPI .-> APIGateway
+PaymentGateway .-> APIGateway
+ThirdPartyAPIs .-> APIGateway
+
+' ================================
+' DATA LAYER INTERNAL CONNECTIONS
+' ================================
+DataAccess --> MainDB
+CacheSystem --> MainDB
+
+' Internal repository connections
+UserRepo --> UserDB
+PickupRepo --> PickupDB
+RewardsRepo --> RewardsDB
+AnalyticsRepo --> AnalyticsDB
+
+' ================================
+' BUSINESS LAYER INTERNAL CONNECTIONS
+' ================================
+PickupService --> CollectionService : "Route Assignment"
+RewardsService --> PickupService : "Points Calculation" 
+AdminService --> UserService : "User Management"
+SponsorService --> RewardsService : "Reward Creation"
+
+' ================================
+' NOTES AND ANNOTATIONS
+' ================================
+note top of DonorApp : "React Native\nMobile Application"
+note top of CollectorApp : "React Native\nCollector Application" 
+note top of AdminWeb : "React Web\nAdmin Dashboard"
+note top of SponsorWeb : "React Web\nSponsor Portal"
+
+note bottom of MainDB : "PostgreSQL Database\nwith JSON support"
+note bottom of CacheSystem : "Redis + In-Memory\nCaching Strategy"
+
+note right of SecurityService : "JWT Authentication\nRole-based Authorization"
+note right of NotificationService : "Multi-channel\nNotification System"
+
+@enduml 

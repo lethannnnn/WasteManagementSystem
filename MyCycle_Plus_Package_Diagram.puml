@@ -1,0 +1,288 @@
+@startuml MyCycle_Plus_Package_Diagram
+!theme plain
+title MyCycle+ System - Detailed Package Diagram
+
+' ================================
+' STYLING FOR BETTER ARROW VISIBILITY
+' ================================
+skinparam ArrowThickness 3
+skinparam ArrowColor #2E8B57
+skinparam ArrowFontSize 12
+skinparam ArrowFontColor #000000
+skinparam componentArrowThickness 3
+skinparam packageArrowThickness 3
+
+' Additional styling for better visibility
+skinparam shadowing false
+skinparam packageBorderThickness 2
+skinparam componentBorderThickness 2
+skinparam packageBorderColor #4A90E2
+skinparam componentBorderColor #7B68EE
+
+' ================================
+' PRESENTATION LAYER
+' ================================
+package "Presentation Layer" as PresentationLayer {
+    package "Mobile Applications" as MobileApps {
+        component [Donor Mobile App] as DonorApp
+        component [Collector Mobile App] as CollectorApp
+    }
+    
+    package "Web Applications" as WebApps {
+        component [Admin Web Dashboard] as AdminWeb
+        component [Sponsor Partner Portal] as SponsorWeb
+    }
+}
+
+' ================================
+' APPLICATION LAYER - SPECIFIC MODULES
+' ================================
+package "Application Layer" as ApplicationLayer {
+    
+    package "User Account Module" as UserAccountModule {
+        component [Authentication Service] as AuthService
+        component [User Profile Service] as UserProfileService
+        component [Account Management Service] as AccountMgmtService
+        component [Password Service] as PasswordService
+        component [Email Verification Service] as EmailVerificationService
+        component [Session Management Service] as SessionMgmtService
+    }
+    
+    package "Pickup Appointment Module" as PickupAppointmentModule {
+        component [Pickup Scheduling Service] as PickupSchedulingService
+        component [Calendar Service] as CalendarService
+        component [Address Management Service] as AddressMgmtService
+        component [Appointment Validation Service] as AppointmentValidationService
+        component [Pickup Tracking Service] as PickupTrackingService
+        component [QR Code Generation Service] as QRGenerationService
+    }
+    
+    package "Collector Module" as CollectorModule {
+        component [Route Management Service] as RouteManagementService
+        component [Route Optimization Service] as RouteOptimizationService
+        component [Collection Tracking Service] as CollectionTrackingService
+        component [QR Scanning Service] as QRScanningService
+        component [Vehicle Management Service] as VehicleManagementService
+        component [Performance Tracking Service] as PerformanceTrackingService
+    }
+    
+    package "Rewards & Redemption Module" as RewardsModule {
+        component [Reward Catalog Service] as RewardCatalogService
+        component [Point Calculation Service] as PointCalculationService
+        component [Redemption Processing Service] as RedemptionProcessingService
+        component [Reward Validation Service] as RewardValidationService
+        component [Badge Management Service] as BadgeManagementService
+        component [Leaderboard Service] as LeaderboardService
+    }
+    
+    package "Admin Module" as AdminModule {
+        component [User Management Service] as UserManagementService
+        component [System Analytics Service] as SystemAnalyticsService
+        component [Report Generation Service] as ReportGenerationService
+        component [Content Moderation Service] as ContentModerationService
+        component [System Configuration Service] as SystemConfigService
+        component [Audit Service] as AuditService
+    }
+    
+    package "Sponsor Partner Module" as SponsorPartnerModule {
+        component [Partnership Management Service] as PartnershipMgmtService
+        component [Reward Creation Service] as RewardCreationService
+        component [Campaign Management Service] as CampaignMgmtService
+        component [Sponsor Analytics Service] as SponsorAnalyticsService
+        component [Budget Management Service] as BudgetMgmtService
+        component [Brand Asset Service] as BrandAssetService
+    }
+}
+
+' ================================
+' BUSINESS LAYER
+' ================================
+package "Business Layer" as BusinessLayer {
+    package "Core Business Logic" as CoreBusiness {
+        component [User Domain Logic] as UserDomain
+        component [Pickup Domain Logic] as PickupDomain
+        component [Collection Domain Logic] as CollectionDomain
+        component [Reward Domain Logic] as RewardDomain
+        component [Point Calculation Logic] as PointLogic
+        component [Environmental Impact Logic] as EnvImpactLogic
+    }
+    
+    package "Business Rules Engine" as BusinessRules {
+        component [Validation Rules] as ValidationRules
+        component [Business Policies] as BusinessPolicies
+        component [Workflow Engine] as WorkflowEngine
+        component [Event Processing] as EventProcessing
+    }
+}
+
+' ================================
+' DATA LAYER
+' ================================
+package "Data Layer" as DataLayer {
+    package "Database Management" as DatabaseMgmt {
+        database "MyCycle+ Database" as MainDB
+        component [User Tables] as UserTables
+        component [Pickup Tables] as PickupTables
+        component [Reward Tables] as RewardTables
+        component [Analytics Tables] as AnalyticsTables
+        component [System Tables] as SystemTables
+        component [Audit Tables] as AuditTables
+    }
+    
+    package "Data Access Layer" as DataAccess {
+        component [User Repository] as UserRepo
+        component [Pickup Repository] as PickupRepo
+        component [Collection Repository] as CollectionRepo
+        component [Reward Repository] as RewardRepo
+        component [Analytics Repository] as AnalyticsRepo
+        component [Audit Repository] as AuditRepo
+    }
+    
+    package "Caching Layer" as CacheLayer {
+        component [Session Cache] as SessionCache
+        component [Data Cache] as DataCache
+        component [Application Cache] as AppCache
+    }
+}
+
+' ================================
+' EXTERNAL SERVICES
+' ================================
+package "External Services" as ExternalServices {
+    package "Third Party APIs" as ThirdPartyAPIs {
+        component [Google Maps API] as GoogleMapsAPI
+        component [Email Service Provider] as EmailProvider
+        component [SMS Service Provider] as SMSProvider
+        component [Push Notification Service] as PushNotificationService
+    }
+    
+    package "Payment & Rewards" as PaymentRewards {
+        component [Payment Gateway] as PaymentGateway
+        component [Reward Partner APIs] as RewardPartnerAPIs
+        component [Digital Wallet APIs] as DigitalWalletAPIs
+    }
+    
+    package "Government & Environmental" as GovEnvironmental {
+        component [Environmental Data API] as EnvironmentalAPI
+        component [Government Waste API] as GovernmentWasteAPI
+        component [Compliance Reporting API] as ComplianceAPI
+    }
+}
+
+' ================================
+' INFRASTRUCTURE LAYER
+' ================================
+package "Infrastructure Layer" as InfrastructureLayer {
+    package "Security & Authentication" as Security {
+        component [JWT Token Handler] as JWTHandler
+        component [Encryption Service] as EncryptionService
+        component [OAuth Handler] as OAuthHandler
+        component [API Security Gateway] as APISecurityGateway
+    }
+    
+    package "Communication Services" as CommunicationServices {
+        component [Notification Engine] as NotificationEngine
+        component [Email Service] as EmailService
+        component [SMS Service] as SMSService
+        component [Push Notification Handler] as PushHandler
+    }
+    
+    package "Monitoring & Logging" as MonitoringLogging {
+        component [Application Logger] as AppLogger
+        component [Performance Monitor] as PerfMonitor
+        component [Error Tracking] as ErrorTracking
+        component [Health Check Service] as HealthCheckService
+    }
+    
+    package "Configuration & Deployment" as ConfigDeployment {
+        component [Environment Configuration] as EnvConfig
+        component [Feature Flags] as FeatureFlags
+        component [API Gateway] as APIGateway
+        component [Load Balancer] as LoadBalancer
+    }
+}
+
+' ================================
+' PRESENTATION TO APPLICATION DEPENDENCIES
+' ================================
+DonorApp -[#FF6B35,thickness=3]-> UserAccountModule
+DonorApp -[#FF6B35,thickness=3]-> PickupAppointmentModule
+DonorApp -[#FF6B35,thickness=3]-> RewardsModule
+
+CollectorApp -[#1E88E5,thickness=3]-> UserAccountModule
+CollectorApp -[#1E88E5,thickness=3]-> CollectorModule
+CollectorApp -[#1E88E5,thickness=3]-> PickupAppointmentModule
+
+AdminWeb -[#8E24AA,thickness=3]-> UserAccountModule
+AdminWeb -[#8E24AA,thickness=3]-> AdminModule
+AdminWeb -[#8E24AA,thickness=3]-> RewardsModule
+
+SponsorWeb -[#43A047,thickness=3]-> UserAccountModule
+SponsorWeb -[#43A047,thickness=3]-> SponsorPartnerModule
+SponsorWeb -[#43A047,thickness=3]-> RewardsModule
+
+' ================================
+' APPLICATION TO BUSINESS DEPENDENCIES
+' ================================
+UserAccountModule -[#2E8B57,thickness=2]-> UserDomain
+PickupAppointmentModule -[#2E8B57,thickness=2]-> PickupDomain
+CollectorModule -[#2E8B57,thickness=2]-> CollectionDomain
+RewardsModule -[#2E8B57,thickness=2]-> RewardDomain
+AdminModule -[#2E8B57,thickness=2]-> ValidationRules
+SponsorPartnerModule -[#2E8B57,thickness=2]-> BusinessPolicies
+
+' ================================
+' BUSINESS TO DATA DEPENDENCIES
+' ================================
+UserDomain -[#4A90E2,thickness=2]-> UserRepo
+PickupDomain -[#4A90E2,thickness=2]-> PickupRepo
+CollectionDomain -[#4A90E2,thickness=2]-> CollectionRepo
+RewardDomain -[#4A90E2,thickness=2]-> RewardRepo
+PointLogic -[#4A90E2,thickness=2]-> AnalyticsRepo
+
+' ================================
+' DATA REPOSITORIES TO DATABASE
+' ================================
+UserRepo -[#7B68EE,thickness=2]-> UserTables
+PickupRepo -[#7B68EE,thickness=2]-> PickupTables
+CollectionRepo -[#7B68EE,thickness=2]-> PickupTables
+RewardRepo -[#7B68EE,thickness=2]-> RewardTables
+AnalyticsRepo -[#7B68EE,thickness=2]-> AnalyticsTables
+AuditRepo -[#7B68EE,thickness=2]-> AuditTables
+
+' ================================
+' APPLICATION TO EXTERNAL SERVICES
+' ================================
+PickupAppointmentModule -[#FF8F00,thickness=2]-> GoogleMapsAPI
+RouteOptimizationService -[#FF8F00,thickness=2]-> GoogleMapsAPI
+RedemptionProcessingService -[#FF8F00,thickness=2]-> PaymentGateway
+SponsorPartnerModule -[#FF8F00,thickness=2]-> RewardPartnerAPIs
+SystemAnalyticsService -[#FF8F00,thickness=2]-> EnvironmentalAPI
+
+' ================================
+' APPLICATION TO INFRASTRUCTURE
+' ================================
+UserAccountModule -[#9C27B0,thickness=2]-> JWTHandler
+UserAccountModule -[#9C27B0,thickness=2]-> EncryptionService
+PickupAppointmentModule -[#9C27B0,thickness=2]-> NotificationEngine
+CollectorModule -[#9C27B0,thickness=2]-> NotificationEngine
+RewardsModule -[#9C27B0,thickness=2]-> NotificationEngine
+AdminModule -[#9C27B0,thickness=2]-> AppLogger
+SponsorPartnerModule -[#9C27B0,thickness=2]-> AppLogger
+
+' ================================
+' INFRASTRUCTURE TO EXTERNAL
+' ================================
+NotificationEngine -[#E91E63,thickness=2]-> EmailProvider
+NotificationEngine -[#E91E63,thickness=2]-> SMSProvider
+NotificationEngine -[#E91E63,thickness=2]-> PushNotificationService
+APIGateway -[#E91E63,thickness=2]-> APISecurityGateway
+
+' ================================
+' CACHING DEPENDENCIES
+' ================================
+UserAccountModule -[#00BCD4,thickness=2]-> SessionCache
+RewardsModule -[#00BCD4,thickness=2]-> DataCache
+LeaderboardService -[#00BCD4,thickness=2]-> AppCache
+
+@enduml 

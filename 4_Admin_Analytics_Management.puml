@@ -1,0 +1,93 @@
+@startuml 4_Admin_Analytics_Management
+title MyCycle+ Admin Analytics & Management Flow
+
+actor "Admin" as Admin
+participant "Admin Dashboard" as AdminDash
+participant "Analytics Service" as AnalyticsSvc
+participant "User Service" as UserSvc
+participant "Database" as DB
+participant "Report Service" as ReportSvc
+participant "Notification Service" as NotifSvc
+
+== Admin Login & Dashboard ==
+Admin -> AdminDash: Login to Admin Panel
+AdminDash -> UserSvc: Authenticate Admin
+UserSvc -> DB: Verify admin credentials and permissions
+AdminDash -> AnalyticsSvc: Get Dashboard Metrics
+AnalyticsSvc -> DB: Execute Analytics Queries
+
+note over AnalyticsSvc, DB: Dashboard Data Collection (Parallel)
+AnalyticsSvc -> DB: Get today's new users count
+AnalyticsSvc -> DB: Get today's total recycling weight
+AnalyticsSvc -> DB: Get today's redemptions count
+AnalyticsSvc -> DB: Get active donors count
+AnalyticsSvc -> DB: Get active collectors count
+
+AnalyticsSvc -> AdminDash: Return Aggregated Metrics
+AdminDash -> Admin: Display Dashboard Overview
+
+== User Management ==
+Admin -> AdminDash: Access User Management
+AdminDash -> UserSvc: Get Users List with Filters
+UserSvc -> DB: SELECT users, donors, collectors with pagination
+DB -> UserSvc: Return user data
+UserSvc -> AdminDash: Display Users Table
+
+Admin -> AdminDash: Search/Filter Users
+AdminDash -> UserSvc: Apply Search Criteria
+UserSvc -> DB: SELECT users WHERE criteria LIKE '%search%'
+
+Admin -> AdminDash: View User Details
+AdminDash -> UserSvc: Get User Complete Profile
+UserSvc -> DB: SELECT user details, transaction history, redemption history
+UserSvc -> AdminDash: Display User Profile
+
+alt User Action Required
+    Admin -> AdminDash: Suspend/Activate User
+    AdminDash -> UserSvc: Update User Status
+    UserSvc -> DB: UPDATE users SET is_active = ?, verification_status = ?
+    UserSvc -> NotifSvc: Send Status Change Notification
+    NotifSvc -> DB: INSERT INTO notifications
+end
+
+== Rewards Management ==
+Admin -> AdminDash: Access Rewards Management
+AdminDash -> AnalyticsSvc: Get Rewards Analytics
+AnalyticsSvc -> DB: SELECT rewards with redemption statistics
+AdminDash -> Admin: Display Rewards Dashboard
+
+Admin -> AdminDash: Review Reward Performance
+AdminDash -> AnalyticsSvc: Get Detailed Reward Metrics
+AnalyticsSvc -> DB: SELECT redemption trends, popular categories, sponsor performance
+AnalyticsSvc -> AdminDash: Return Reward Analytics
+
+Admin -> AdminDash: Approve/Reject New Rewards
+AdminDash -> UserSvc: Update Reward Status
+UserSvc -> DB: UPDATE rewards SET is_active = ?
+UserSvc -> NotifSvc: Notify Sponsor of Status Change
+
+== System Analytics Generation ==
+Admin -> AdminDash: Generate System Report
+AdminDash -> AnalyticsSvc: Create Comprehensive Report
+AnalyticsSvc -> DB: Execute Multiple Analytics Queries
+
+note over AnalyticsSvc, DB: Report Data Collection (Parallel)
+AnalyticsSvc -> DB: User Growth Analytics
+AnalyticsSvc -> DB: Recycling Volume Trends
+AnalyticsSvc -> DB: Reward Redemption Patterns
+AnalyticsSvc -> DB: Collector Performance Metrics
+AnalyticsSvc -> DB: Environmental Impact Calculations
+AnalyticsSvc -> DB: Regional Performance Breakdown
+
+AnalyticsSvc -> ReportSvc: Compile Report Data
+ReportSvc -> DB: INSERT INTO system_analytics (date, metric_type, total_pickups, total_weight_kg, ...)
+ReportSvc -> AdminDash: Return Generated Report
+AdminDash -> Admin: Display/Download Report
+
+== Audit Log Monitoring ==
+Admin -> AdminDash: View Audit Logs
+AdminDash -> DB: SELECT FROM audit_logs ORDER BY changed_at DESC
+DB -> AdminDash: Return Recent System Changes
+AdminDash -> Admin: Display Audit Trail
+
+@enduml 
