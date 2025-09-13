@@ -5,7 +5,7 @@
   "private": true,
   "workspaces": [
     "apps/donor-mobile",
-    "apps/collector-mobile", 
+    "apps/collector-mobile",
     "apps/admin-web",
     "apps/sponsor-web"
   ],
@@ -36,5 +36,11 @@
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "react-dom": "19.1.0",
+    "react-native-web": "^0.21.0",
+    "@expo/metro-runtime": "~6.1.2"
   }
-} 
+}

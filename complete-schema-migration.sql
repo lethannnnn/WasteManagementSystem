@@ -453,22 +453,225 @@ INSERT INTO rewards (reward_id, title, description, points_required, category, s
 ('RWD004', 'RM20 Restaurant Voucher', 'RM20 dining voucher at partner restaurants', 400, 'Food & Beverage', 30),
 ('RWD005', 'Premium Membership (1 Month)', 'One month of premium features', 500, 'Digital', 20);
 
--- Create default admin user
+-- DELETE ALL EXISTING DATA (in reverse dependency order)
+DELETE FROM notifications;
+DELETE FROM leaderboards;
+DELETE FROM user_badges;
+DELETE FROM redemptions;
+DELETE FROM point_transactions;
+DELETE FROM qr_codes;
+DELETE FROM pickup_items;
+DELETE FROM pickups;
+DELETE FROM route_assignments;
+DELETE FROM routes;
+DELETE FROM addresses;
+DELETE FROM sponsors;
+DELETE FROM admins;
+DELETE FROM collectors;
+DELETE FROM donors;
+DELETE FROM users;
+DELETE FROM rewards;
+DELETE FROM badges;
+DELETE FROM item_categories;
+
+-- Reset sequences
+ALTER SEQUENCE user_id_seq RESTART WITH 1;
+ALTER SEQUENCE donor_id_seq RESTART WITH 1;
+ALTER SEQUENCE collector_id_seq RESTART WITH 1;
+ALTER SEQUENCE admin_id_seq RESTART WITH 1;
+ALTER SEQUENCE sponsor_id_seq RESTART WITH 1;
+ALTER SEQUENCE address_id_seq RESTART WITH 1;
+ALTER SEQUENCE route_id_seq RESTART WITH 1;
+ALTER SEQUENCE pickup_id_seq RESTART WITH 1;
+ALTER SEQUENCE category_id_seq RESTART WITH 1;
+ALTER SEQUENCE qr_id_seq RESTART WITH 1;
+ALTER SEQUENCE transaction_id_seq RESTART WITH 1;
+ALTER SEQUENCE reward_id_seq RESTART WITH 1;
+ALTER SEQUENCE redemption_id_seq RESTART WITH 1;
+ALTER SEQUENCE badge_id_seq RESTART WITH 1;
+ALTER SEQUENCE leaderboard_id_seq RESTART WITH 1;
+ALTER SEQUENCE notification_id_seq RESTART WITH 1;
+
+-- Re-insert default item categories
+INSERT INTO item_categories (category_id, category_name, description, points_per_kg) VALUES
+('CAT001', 'Paper', 'Newspapers, magazines, office paper', 5),
+('CAT002', 'Plastic', 'Bottles, containers, packaging', 8),
+('CAT003', 'Metal', 'Aluminum cans, steel containers', 12),
+('CAT004', 'Glass', 'Bottles, jars', 6),
+('CAT005', 'Electronics', 'Old phones, computers, cables', 20),
+('CAT006', 'Textiles', 'Clothes, fabric, shoes', 4);
+
+-- Re-insert default badges
+INSERT INTO badges (badge_id, badge_name, description, criteria, points_reward) VALUES
+('BDG001', 'First Donation', 'Complete your first recycling pickup', 'Complete 1 pickup', 50),
+('BDG002', 'Eco Warrior', 'Complete 10 recycling pickups', 'Complete 10 pickups', 100),
+('BDG003', 'Green Champion', 'Earn 1000 points', 'Accumulate 1000 points', 200),
+('BDG004', 'Plastic Fighter', 'Recycle 50kg of plastic', 'Recycle 50kg plastic', 150),
+('BDG005', 'Metal Master', 'Recycle 25kg of metal', 'Recycle 25kg metal', 180);
+
+-- Re-insert default rewards
+INSERT INTO rewards (reward_id, title, description, points_required, category, stock_quantity) VALUES
+('RWD001', 'RM5 Grab Voucher', 'RM5 discount for Grab rides', 100, 'Transportation', 100),
+('RWD002', 'RM10 Shopee Voucher', 'RM10 discount for Shopee purchases', 200, 'Shopping', 50),
+('RWD003', 'Eco-Friendly Tote Bag', 'Reusable canvas tote bag', 150, 'Merchandise', 25),
+('RWD004', 'RM20 Restaurant Voucher', 'RM20 dining voucher at partner restaurants', 400, 'Food & Beverage', 30),
+('RWD005', 'Premium Membership (1 Month)', 'One month of premium features', 500, 'Digital', 20);
+
+-- CREATE DEMO USERS
+
+-- Demo Donor User: user1 / lamyh-pm22@student.tarc.edu.my / user1
+DO $$
+DECLARE
+    donor_user_id VARCHAR(20);
+BEGIN
+    donor_user_id := create_complete_user(
+        'donor',
+        'lamyh-pm22@student.tarc.edu.my',
+        '$2b$10$N9qo8uLOickgx2ZMRZoMye.Fq4j7rw.rHWG/wuDUySAoqAWpDnFIu', -- bcrypt hash for 'user1'
+        'Demo Donor User',
+        '+60123456789'
+    );
+    
+    -- Update donor with some demo points and stats
+    UPDATE donors SET 
+        points = 250,
+        total_donations = 5,
+        membership_tier = 'Silver'
+    WHERE user_id = donor_user_id;
+    
+    RAISE NOTICE 'Demo donor created with User ID: %', donor_user_id;
+END $$;
+
+-- Demo Collector User: collector1@mycycle.com / collector1
+DO $$
+DECLARE
+    collector_user_id VARCHAR(20);
+BEGIN
+    collector_user_id := create_complete_user(
+        'collector',
+        'collector1@mycycle.com',
+        '$2b$10$8K1p/a0dqFNH7rUiY2y3a.D7Q9Z5v6B8c4X2w1E9r7T6y5U4i3O2p', -- bcrypt hash for 'collector1'
+        'Demo Collector User',
+        '+60123456790'
+    );
+    
+    -- Update collector with vehicle info
+    UPDATE collectors SET 
+        vehicle_type = 'Van',
+        license_plate = 'ABC1234',
+        status = 'Available'
+    WHERE user_id = collector_user_id;
+    
+    RAISE NOTICE 'Demo collector created with User ID: %', collector_user_id;
+END $$;
+
+-- Demo Admin User: admin1@mycycle.com / admin1
 DO $$
 DECLARE
     admin_user_id VARCHAR(20);
-    admin_id VARCHAR(20);
 BEGIN
-    admin_user_id := generate_custom_id('U', 'user_id_seq');
-    admin_id := generate_custom_id('A', 'admin_id_seq');
+    admin_user_id := create_complete_user(
+        'admin',
+        'admin1@mycycle.com',
+        '$2b$10$7J2o/b1eqGOI8sVjZ3x4b.E8R0A6w7C9d5Y3x2F0s8U7z6V5j4P3q', -- bcrypt hash for 'admin1'
+        'Demo Admin User',
+        '+60123456791'
+    );
     
-    -- Insert admin user
-    INSERT INTO users (user_id, email, password_hash, full_name, phone_number, email_verified)
-    VALUES (admin_user_id, 'admin@mycycleplus.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', '+60123456789', TRUE);
+    -- Update admin with permissions
+    UPDATE admins SET 
+        role = 'Admin',
+        permissions = ARRAY['user_management', 'route_management', 'analytics']
+    WHERE user_id = admin_user_id;
     
-    -- Insert admin profile
-    INSERT INTO admins (admin_id, user_id, role, permissions)
-    VALUES (admin_id, admin_user_id, 'Super Admin', ARRAY['all']);
-    
-    RAISE NOTICE 'Default admin created with User ID: % and Admin ID: %', admin_user_id, admin_id;
+    RAISE NOTICE 'Demo admin created with User ID: %', admin_user_id;
+END $$;
+
+-- Create demo addresses for donor
+INSERT INTO addresses (user_id, street_address, city, state, postal_code, latitude, longitude, is_primary)
+SELECT u.user_id, '123 Jalan Demo', 'Kuala Lumpur', 'Selangor', '50000', 3.1390, 101.6869, TRUE
+FROM users u
+JOIN donors d ON u.user_id = d.user_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+-- Create demo routes
+INSERT INTO routes (route_name, description, start_location, end_location, estimated_duration, status) VALUES
+('Demo Route A - KL Central', 'Central KL collection route', 'KL Sentral', 'KLCC', 120, 'Active'),
+('Demo Route B - Petaling Jaya', 'PJ residential area route', 'PJ Old Town', 'PJ New Town', 90, 'Active');
+
+-- Create demo pickups with some history
+INSERT INTO pickups (donor_id, address_id, scheduled_date, scheduled_time, status, total_weight, total_points, notes)
+SELECT 
+    d.donor_id,
+    a.address_id,
+    CURRENT_DATE - INTERVAL '7 days',
+    '10:00:00',
+    'Completed',
+    5.5,
+    55,
+    'First demo pickup - mixed recyclables'
+FROM donors d
+JOIN users u ON d.user_id = u.user_id
+JOIN addresses a ON u.user_id = a.user_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+-- Create demo pickup items
+INSERT INTO pickup_items (item_id, pickup_id, category_id, weight, points_earned)
+SELECT 
+    'ITEM001',
+    p.pickup_id,
+    'CAT001', -- Paper
+    2.0,
+    10
+FROM pickups p
+JOIN donors d ON p.donor_id = d.donor_id
+JOIN users u ON d.user_id = u.user_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+INSERT INTO pickup_items (item_id, pickup_id, category_id, weight, points_earned)
+SELECT 
+    'ITEM002',
+    p.pickup_id,
+    'CAT002', -- Plastic
+    3.5,
+    28
+FROM pickups p
+JOIN donors d ON p.donor_id = d.donor_id
+JOIN users u ON d.user_id = u.user_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+-- Create demo point transactions
+INSERT INTO point_transactions (donor_id, pickup_id, transaction_type, points, description)
+SELECT 
+    d.donor_id,
+    p.pickup_id,
+    'Earned',
+    55,
+    'Points earned from demo pickup'
+FROM donors d
+JOIN users u ON d.user_id = u.user_id
+JOIN pickups p ON d.donor_id = p.donor_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+-- Award first donation badge
+INSERT INTO user_badges (donor_id, badge_id)
+SELECT d.donor_id, 'BDG001'
+FROM donors d
+JOIN users u ON d.user_id = u.user_id
+WHERE u.email = 'lamyh-pm22@student.tarc.edu.my';
+
+-- Create demo notifications
+INSERT INTO notifications (user_id, title, message, type, priority)
+SELECT 
+    u.user_id,
+    'Welcome to MyCycle+!',
+    'Thank you for joining our recycling community. Start your first pickup to earn points!',
+    'System',
+    'Normal'
+FROM users u
+WHERE u.email IN ('lamyh-pm22@student.tarc.edu.my', 'collector1@mycycle.com', 'admin1@mycycle.com');
+
+DO $$
+BEGIN
+    RAISE NOTICE 'Demo data creation completed successfully!';
 END $$;
