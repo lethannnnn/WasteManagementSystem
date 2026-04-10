@@ -10,9 +10,16 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.2",
+    "@supabase/supabase-js": "^2.103.0",
     "bcryptjs": "^3.0.2",
     "expo": "~54.0.0",
+    "expo-camera": "^55.0.15",
+    "expo-constants": "^55.0.13",
     "expo-crypto": "~15.0.7",
+    "expo-image-picker": "^55.0.18",
+    "expo-location": "^55.1.8",
+    "expo-router": "^55.0.11",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
     "react-native": "0.81.4",
