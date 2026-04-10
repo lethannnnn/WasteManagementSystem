@@ -1,0 +1,75 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+web-build/
+.expo/
+
+# ── Environment variables (NEVER commit secrets) ───────────────
+.env
+.env.*
+!.env.example
+*.local
+
+# ── Supabase local ────────────────────────────────────────────
+.supabase/
+
+# ── Expo ──────────────────────────────────────────────────────
+expo-env.d.ts
+.metro-health-check*
+
+# ── Native / mobile ───────────────────────────────────────────
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# ── TypeScript ────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.*
+lerna-debug.*
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── ML model training artifacts ───────────────────────────────
+# (keep .tflite bundled in assets, exclude large training files)
+*.h5
+*.pb
+*.ckpt
+*.ckpt.*
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+training_data/
+datasets/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.backup
+*.tmp
