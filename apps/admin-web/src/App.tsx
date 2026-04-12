@@ -4,6 +4,8 @@ import { useAuth } from './hooks/useAuth'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import { SidebarProvider } from './context/SidebarContext'
+import { PermissionsProvider, usePermissions } from './context/PermissionsContext'
+import type { Module } from './context/PermissionsContext'
 import AuthScreen from './AuthScreen'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
@@ -18,6 +20,12 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 })
 
+function PermissionGate({ module, children }: { module: Module; children: React.ReactNode }) {
+  const { canRead, loading } = usePermissions()
+  if (loading) return <LoadingScreen />
+  return canRead(module) ? <>{children}</> : <Navigate to="/" replace />
+}
+
 function AppRoutes() {
   const { isAdmin } = useAuth()
 
@@ -27,13 +35,18 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index              element={<DashboardPage />}  />
-        <Route path="users"      element={<UsersPage />}       />
-        <Route path="rewards"    element={<RewardsPage />}     />
-        <Route path="analytics"  element={<AnalyticsPage />}   />
-        <Route path="routes"     element={<RoutesPage />}      />
-        <Route path="collectors" element={<CollectorsPage />}  />
-        <Route path="*"          element={<Navigate to="/" replace />} />
+        <Route index element={<DashboardPage />} />
+        <Route path="users"
+          element={<PermissionGate module="users"><UsersPage /></PermissionGate>} />
+        <Route path="rewards"
+          element={<PermissionGate module="rewards"><RewardsPage /></PermissionGate>} />
+        <Route path="analytics"
+          element={<PermissionGate module="analytics"><AnalyticsPage /></PermissionGate>} />
+        <Route path="routes"
+          element={<PermissionGate module="routes"><RoutesPage /></PermissionGate>} />
+        <Route path="collectors"
+          element={<PermissionGate module="collectors"><CollectorsPage /></PermissionGate>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   )
@@ -46,7 +59,9 @@ export default function App() {
         <ConfirmProvider>
           <SidebarProvider>
             <BrowserRouter>
-              <AppRoutes />
+              <PermissionsProvider>
+                <AppRoutes />
+              </PermissionsProvider>
             </BrowserRouter>
           </SidebarProvider>
         </ConfirmProvider>

@@ -2,6 +2,8 @@ import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../hooks/useAuth'
 import { useSidebar } from '../context/SidebarContext'
+import { usePermissions } from '../context/PermissionsContext'
+import type { Module } from '../context/PermissionsContext'
 import { supabase } from '../lib/supabase'
 
 async function fetchBadges() {
@@ -78,18 +80,23 @@ const ICONS = {
 
 type IconKey = keyof typeof ICONS
 
-const NAV_ITEMS: { to: string; label: string; icon: IconKey; badgeKey?: 'routes' | 'collectors' }[] = [
-  { to: '/',           label: 'Dashboard',           icon: 'dashboard'  },
-  { to: '/users',      label: 'Manage Users',         icon: 'users'      },
-  { to: '/rewards',    label: 'Manage Rewards',       icon: 'rewards'    },
-  { to: '/analytics',  label: 'Analytics',            icon: 'analytics'  },
-  { to: '/routes',     label: 'Route Optimization',   icon: 'routes',    badgeKey: 'routes'     },
-  { to: '/collectors', label: 'Collector Management', icon: 'collectors', badgeKey: 'collectors' },
+const NAV_ITEMS: {
+  to: string; label: string; icon: IconKey
+  badgeKey?: 'routes' | 'collectors'
+  module?:   Module
+}[] = [
+  { to: '/',           label: 'Dashboard',           icon: 'dashboard'                                             },
+  { to: '/users',      label: 'Manage Users',         icon: 'users',      module: 'users'                          },
+  { to: '/rewards',    label: 'Manage Rewards',       icon: 'rewards',    module: 'rewards'                        },
+  { to: '/analytics',  label: 'Analytics',            icon: 'analytics',  module: 'analytics'                      },
+  { to: '/routes',     label: 'Route Optimization',   icon: 'routes',     module: 'routes',    badgeKey: 'routes'     },
+  { to: '/collectors', label: 'Collector Management', icon: 'collectors', module: 'collectors', badgeKey: 'collectors' },
 ]
 
 export default function Sidebar() {
   const { signOut, adminName }    = useAuth()
   const { collapsed, toggle }     = useSidebar()
+  const { canRead }               = usePermissions()
 
   const { data: badges } = useQuery({
     queryKey: ['nav-badges'],
@@ -118,7 +125,7 @@ export default function Sidebar() {
 
       {/* ── Nav items ── */}
       <ul className="nav-menu">
-        {NAV_ITEMS.map(({ to, label, icon, badgeKey }) => {
+        {NAV_ITEMS.filter(({ module }) => !module || canRead(module)).map(({ to, label, icon, badgeKey }) => {
           const badgeCount = badgeKey ? (badges?.[badgeKey] ?? 0) : 0
           return (
             <li key={to}>

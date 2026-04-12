@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { User } from '../types'
-import AddCollectorModal from '../components/AddCollectorModal'
+import AddUserModal from '../components/AddUserModal'
+import RolePermissionsView from '../components/RolePermissionsView'
+import Pagination from '../components/Pagination'
+import { useSortable } from '../hooks/useSortable'
+import { usePagination } from '../hooks/usePagination'
 import { useToast } from '../context/ToastContext'
 import { useConfirm } from '../context/ConfirmContext'
+
+const DEFAULT_ADMIN_EMAIL = 'admin@mycycle.com'
 
 async function fetchUsers(): Promise<User[]> {
   const { data, error } = await supabase
@@ -16,9 +22,7 @@ async function fetchUsers(): Promise<User[]> {
       sponsors(sponsor_id, company_name)
     `)
     .order('created_at', { ascending: false })
-
   if (error) throw error
-
   return (data ?? []).map(u => ({
     id:           u.user_id,
     name:         u.full_name ?? 'Unknown',
@@ -37,7 +41,10 @@ const TABS = [
   { key: 'donor',     label: 'Donors'     },
   { key: 'collector', label: 'Collectors' },
   { key: 'sponsor',   label: 'Sponsors'   },
+  { key: 'admin',     label: 'Admins'     },
 ] as const
+type TabKey = typeof TABS[number]['key']
+type ViewMode = 'table' | 'detail' | 'permissions'
 
 const TYPE_BG: Record<string, string> = {
   Donor: '#dcfce7', Collector: '#dbeafe', Sponsor: '#fef3c7', Admin: '#f3e8ff',
@@ -47,39 +54,10 @@ const TYPE_COLOR: Record<string, string> = {
 }
 
 function RoleStats({ user }: { user: User }) {
-  if (user.type === 'Donor') {
-    const pts   = user.points ?? 0
-    const level = pts >= 1000 ? 'Green Champion' : pts >= 500 ? 'Eco Warrior' : 'Beginner'
-    return (
-      <>
-        <div className="ud-stat">
-          <span className="ud-stat-label">Points</span>
-          <span className="ud-stat-value">{pts.toLocaleString()}</span>
-        </div>
-        <div className="ud-stat">
-          <span className="ud-stat-label">Level</span>
-          <span className="ud-stat-value ud-stat-level">{level}</span>
-        </div>
-      </>
-    )
-  }
-  if (user.type === 'Collector') {
-    return (
-      <div className="ud-stat">
-        <span className="ud-stat-label">Total Pickups</span>
-        <span className="ud-stat-value">{user.collections ?? 0}</span>
-      </div>
-    )
-  }
-  if (user.type === 'Sponsor') {
-    return (
-      <div className="ud-stat">
-        <span className="ud-stat-label">Company</span>
-        <span className="ud-stat-value ud-stat-company">{user.company_name ?? '—'}</span>
-      </div>
-    )
-  }
-  return null
+  if (user.type === 'Donor')     return <span>{(user.points ?? 0).toLocaleString()} pts</span>
+  if (user.type === 'Collector') return <span>{user.collections ?? 0} pickups</span>
+  if (user.type === 'Sponsor')   return <span>{user.company_name ?? '—'}</span>
+  return <span>—</span>
 }
 
 export default function UsersPage() {
@@ -87,8 +65,9 @@ export default function UsersPage() {
   const { toast }   = useToast()
   const confirm     = useConfirm()
 
-  const [activeTab, setActiveTab]       = useState<'all' | 'donor' | 'collector' | 'sponsor'>('all')
+  const [activeTab, setActiveTab]       = useState<TabKey>('all')
   const [searchTerm, setSearchTerm]     = useState('')
+  const [view, setView]                 = useState<ViewMode>('table')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
 
@@ -99,6 +78,7 @@ export default function UsersPage() {
     donor:     users.filter(u => u.type === 'Donor').length,
     collector: users.filter(u => u.type === 'Collector').length,
     sponsor:   users.filter(u => u.type === 'Sponsor').length,
+    admin:     users.filter(u => u.type === 'Admin').length,
   }
 
   const filtered = users.filter(u => {
@@ -108,6 +88,9 @@ export default function UsersPage() {
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
     return matchTab && matchSearch
   })
+
+  const { sorted, toggle, SortIcon } = useSortable(filtered)
+  const { page, setPage, pageSize, setPageSize, pageData, totalPages, total } = usePagination(sorted, 10)
 
   const handleDeactivate = async (userId: string, currentStatus: string) => {
     const activate = currentStatus !== 'Active'
@@ -123,24 +106,26 @@ export default function UsersPage() {
     await supabase.from('users').update({ is_active: activate }).eq('user_id', userId)
     queryClient.invalidateQueries({ queryKey: ['users'] })
     toast(`User ${activate ? 'reactivated' : 'deactivated'} successfully`)
-    if (selectedUser?.id === userId) {
-      setSelectedUser(prev => prev ? { ...prev, status: activate ? 'Active' : 'Inactive' } : null)
-    }
+    setSelectedUser(prev => prev ? { ...prev, status: activate ? 'Active' : 'Inactive' } : null)
   }
+
+  const openDetail = (user: User) => { setSelectedUser(user); setView('detail') }
+  const backToTable = () => { setSelectedUser(null); setView('table') }
+  const openPerms   = () => { setSelectedUser(null); setView('permissions') }
+  const openTab     = (key: TabKey) => { setActiveTab(key); setSelectedUser(null); setView('table'); setPage(1) }
 
   return (
     <div className="users-split">
 
-      {/* ── Left: list panel ── */}
+      {/* ── LEFT: always-visible sidebar ── */}
       <div className="users-list-panel">
-
-        {/* Tab bar */}
+        <p className="users-filter-label">Filter by Role</p>
         <div className="users-tab-bar">
           {TABS.map(t => (
             <button
               key={t.key}
-              className={`users-tab${activeTab === t.key ? ' active' : ''}`}
-              onClick={() => { setActiveTab(t.key); setSelectedUser(null) }}
+              className={`users-tab${activeTab === t.key && view !== 'permissions' ? ' active' : ''}`}
+              onClick={() => openTab(t.key)}
             >
               {t.label}
               <span className="users-tab-count">{tabCounts[t.key]}</span>
@@ -148,77 +133,39 @@ export default function UsersPage() {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="users-list-search">
-          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            placeholder="Search name or email…"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <div className="users-sidebar-divider" />
 
-        {/* User list */}
-        <div className="users-list-items">
-          {isLoading ? (
-            <div className="users-list-msg">Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="users-list-msg">No users found</div>
-          ) : (
-            filtered.map(user => (
-              <div
-                key={user.id}
-                className={`user-list-row${selectedUser?.id === user.id ? ' selected' : ''}`}
-                onClick={() => setSelectedUser(user)}
-              >
-                <div className="user-avatar-sm" style={{ background: TYPE_BG[user.type], color: TYPE_COLOR[user.type] }}>
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="user-list-info">
-                  <span className="user-list-name">{user.name}</span>
-                  <span className="user-list-email">{user.email}</span>
-                </div>
-                <div className="user-list-meta">
-                  <span className={`user-type ${user.type.toLowerCase()}`}>{user.type}</span>
-                  <span className={`status-dot ${user.status.toLowerCase()}`} />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="users-list-footer">
-          <button className="add-collector-list-btn" onClick={() => setShowAddModal(true)}>
-            + Add Collector
+        <p className="users-filter-label">Manage</p>
+        <div className="users-tab-bar">
+          <button
+            className={`users-tab users-nav-item${view === 'permissions' ? ' active' : ''}`}
+            onClick={openPerms}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Role &amp; Permissions
           </button>
         </div>
-
       </div>
 
-      {/* ── Right: detail panel ── */}
-      <div className="users-detail-panel">
-        {!selectedUser ? (
-          <div className="ud-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="52" height="52">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <p>Select a user to view details</p>
-          </div>
-        ) : (
+      {/* ── RIGHT: table / detail / permissions ── */}
+
+      {view === 'permissions' && (
+        <RolePermissionsView />
+      )}
+
+      {view === 'detail' && selectedUser && (
+        <div className="users-detail-panel">
           <div className="ud-card">
 
-            {/* Header */}
-            <div className="ud-header">
+            <div className="ud-profile-head">
               <div className="ud-avatar" style={{ background: TYPE_BG[selectedUser.type], color: TYPE_COLOR[selectedUser.type] }}>
                 {selectedUser.name.charAt(0).toUpperCase()}
               </div>
               <div className="ud-identity">
                 <h2 className="ud-name">{selectedUser.name}</h2>
+                <p className="ud-email-text">{selectedUser.email}</p>
                 <div className="ud-badges">
                   <span className={`user-type ${selectedUser.type.toLowerCase()}`}>{selectedUser.type}</span>
                   <span className={`status ${selectedUser.status.toLowerCase()}`}>{selectedUser.status}</span>
@@ -226,44 +173,129 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {/* Fields */}
-            <div className="ud-fields">
-              <div className="ud-field">
-                <span className="ud-label">Email</span>
-                <span className="ud-value">{selectedUser.email}</span>
+            <div className="ud-info-grid">
+              <div className="ud-info-item">
+                <span className="ud-info-label">Member Since</span>
+                <span className="ud-info-value">{selectedUser.joinDate}</span>
               </div>
-              <div className="ud-field">
-                <span className="ud-label">Joined</span>
-                <span className="ud-value">{selectedUser.joinDate}</span>
-              </div>
+              {selectedUser.type === 'Donor' && (
+                <div className="ud-info-item">
+                  <span className="ud-info-label">Total Points</span>
+                  <span className="ud-info-value ud-info-highlight">{(selectedUser.points ?? 0).toLocaleString()}</span>
+                </div>
+              )}
+              {selectedUser.type === 'Collector' && (
+                <div className="ud-info-item">
+                  <span className="ud-info-label">Collections</span>
+                  <span className="ud-info-value ud-info-highlight">{selectedUser.collections ?? 0}</span>
+                </div>
+              )}
+              {selectedUser.type === 'Sponsor' && (
+                <div className="ud-info-item">
+                  <span className="ud-info-label">Company</span>
+                  <span className="ud-info-value">{selectedUser.company_name ?? '—'}</span>
+                </div>
+              )}
+              {selectedUser.type === 'Admin' && (
+                <div className="ud-info-item">
+                  <span className="ud-info-label">Access Level</span>
+                  <span className="ud-info-value">Administrator</span>
+                </div>
+              )}
             </div>
 
-            {/* Role stats */}
-            <div className="ud-stats-row">
-              <RoleStats user={selectedUser} />
+            <div className="ud-footer">
+              <button className="ud-back-inline-btn" onClick={backToTable}>← Back to list</button>
+              {selectedUser.email !== DEFAULT_ADMIN_EMAIL ? (
+                <button
+                  className={selectedUser.status === 'Active' ? 'ud-deactivate-btn' : 'ud-reactivate-btn'}
+                  onClick={() => handleDeactivate(selectedUser.id, selectedUser.status)}
+                >
+                  {selectedUser.status === 'Active' ? 'Deactivate User' : 'Reactivate User'}
+                </button>
+              ) : (
+                <span className="ud-protected-note">Default admin · cannot be deactivated</span>
+              )}
             </div>
-
-            {/* Actions */}
-            <div className="ud-actions">
-              <button
-                className={selectedUser.status === 'Active' ? 'delete-btn' : 'edit-btn'}
-                onClick={() => handleDeactivate(selectedUser.id, selectedUser.status)}
-              >
-                {selectedUser.status === 'Active' ? 'Deactivate User' : 'Reactivate User'}
-              </button>
-            </div>
-
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {view === 'table' && (
+        <div className="users-table-view">
+          <div className="users-table-topbar">
+            <div className="users-table-search">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                placeholder="Search name or email…"
+                value={searchTerm}
+                onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+              />
+            </div>
+            <div className="users-table-topbar-right">
+              <span className="users-table-count">
+                {isLoading ? 'Loading…' : `${total} user${total !== 1 ? 's' : ''}`}
+              </span>
+              <button className="add-user-btn" onClick={() => setShowAddModal(true)}>+ Add User</button>
+            </div>
+          </div>
+
+          <div className="users-table-scroll">
+            <table className="users-table-main">
+              <thead>
+                <tr>
+                  <th className="sortable-th" onClick={() => toggle('name')}>Name <SortIcon col="name" /></th>
+                  <th>Email</th>
+                  <th className="sortable-th" onClick={() => toggle('type')}>Type <SortIcon col="type" /></th>
+                  <th className="sortable-th" onClick={() => toggle('status')}>Status <SortIcon col="status" /></th>
+                  <th>Stats</th>
+                  <th className="sortable-th" onClick={() => toggle('joinDate')}>Joined <SortIcon col="joinDate" /></th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={7} className="users-table-msg">Loading users…</td></tr>
+                ) : pageData.length === 0 ? (
+                  <tr><td colSpan={7} className="users-table-msg">No users found</td></tr>
+                ) : pageData.map(user => (
+                  <tr key={user.id} className="users-table-row">
+                    <td>
+                      <div className="user-row-name">
+                        <div className="user-avatar-sm" style={{ background: TYPE_BG[user.type], color: TYPE_COLOR[user.type] }}>
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span>{user.name}</span>
+                      </div>
+                    </td>
+                    <td className="user-row-email">{user.email}</td>
+                    <td><span className={`user-type ${user.type.toLowerCase()}`}>{user.type}</span></td>
+                    <td><span className={`status ${user.status.toLowerCase()}`}>{user.status}</span></td>
+                    <td className="user-row-stats"><RoleStats user={user} /></td>
+                    <td className="user-row-date">{user.joinDate}</td>
+                    <td>
+                      <button className="view-details-btn" onClick={() => openDetail(user)}>
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!isLoading && total > 0 && (
+            <Pagination page={page} totalPages={totalPages} pageSize={pageSize} total={total} onPage={setPage} onSize={setPageSize} />
+          )}
+        </div>
+      )}
 
       {showAddModal && (
-        <AddCollectorModal
+        <AddUserModal
           onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['users'] })
-            toast('Collector account created successfully')
-          }}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast('User account created successfully') }}
         />
       )}
     </div>
