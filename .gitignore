@@ -55,6 +55,11 @@ lerna-debug.*
 
 # ── Claude Code ───────────────────────────────────────────────
 .claude/settings.local.json
+./playwright-mcp/
+# ── Project internals (not for public repo) ───────────────────
+CLAUDE.md
+plans/
+docs/
 
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store

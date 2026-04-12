@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './lib/supabase';
 import './AuthScreen.css';
 
 interface AuthScreenProps {
@@ -20,52 +20,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setLoading(true);
 
     try {
-      // First check if user exists in database as admin
-      const { data: adminData, error: adminError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          admins!inner(*)
-        `)
-        .eq('email', email)
-        .single();
-
-      if (adminError || !adminData) {
-        throw new Error('Access denied. Admin privileges required.');
-      }
-
-      // Sign in existing admin user
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      // For admin users, bypass email confirmation requirement
-      if (error && error.message === 'Email not confirmed') {
-        console.log('Admin login: bypassing email confirmation requirement');
-        // Create user object with real admin data from database
-        const adminUser = {
-          id: adminData.user_id,
-          email: adminData.email,
-          user_metadata: { 
-            type: 'Admin',
-            full_name: adminData.full_name,
-            phone: adminData.phone,
-            created_at: adminData.created_at
-          }
-        };
-        onAuthSuccess(adminUser);
-        return;
-      }
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-
-      // Check if user is an admin
-      if (data.user) {
-        console.log('User signed in:', data.user.id, data.user.email);
-        console.log('Admin access verified from database:', adminData.email);
-        onAuthSuccess(data.user);
-      }
+      // useAuth hook handles the admin check after auth state change
     } catch (error: any) {
       console.error('Login error:', error);
       alert(error.message);
