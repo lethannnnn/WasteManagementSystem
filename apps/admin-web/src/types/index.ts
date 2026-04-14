@@ -24,6 +24,22 @@ export interface Reward {
   isActive?: boolean
 }
 
+export interface RewardSubmission {
+  submission_id:   string
+  sponsor_id:      string
+  reward_name:     string
+  description:     string | null
+  points_required: number
+  stock_quantity:  number
+  category:        string
+  valid_from:      string | null
+  valid_until:     string | null
+  status:          'pending' | 'approved' | 'rejected'
+  rejection_reason: string | null
+  created_at:      string
+  sponsorName:     string
+}
+
 export interface SponsorInquiry {
   id: string
   company_name: string
