@@ -10,19 +10,20 @@ import { useConfirm } from '../context/ConfirmContext'
 async function fetchRewards(): Promise<Reward[]> {
   const { data, error } = await supabase
     .from('rewards')
-    .select('reward_id, reward_name, points_required, category, stock_quantity, redeemed_count, is_active')
+    .select('reward_id, reward_name, points_required, category, stock_quantity, redeemed_count, is_active, sponsors(company_name)')
     .order('created_at', { ascending: false })
 
   if (error) throw error
 
   return (data ?? []).map(r => ({
-    id:       r.reward_id,
-    name:     r.reward_name,
-    points:   r.points_required,
-    category: r.category ?? 'General',
-    stock:    r.stock_quantity ?? 0,
-    redeemed: r.redeemed_count ?? 0,
-    isActive: r.is_active ?? true,
+    id:          r.reward_id,
+    name:        r.reward_name,
+    points:      r.points_required,
+    category:    r.category ?? 'General',
+    stock:       r.stock_quantity ?? 0,
+    redeemed:    r.redeemed_count ?? 0,
+    isActive:    r.is_active ?? true,
+    sponsorName: (r.sponsors as any)?.company_name ?? null,
   }))
 }
 
@@ -192,6 +193,15 @@ export default function RewardsPage() {
                       </div>
                     </div>
                   </div>
+                  {reward.sponsorName && (
+                    <div className="reward-sponsor-tag">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="2"/>
+                      </svg>
+                      {reward.sponsorName}
+                    </div>
+                  )}
                   <div className="reward-actions">
                     <button
                       className="edit-reward-btn"

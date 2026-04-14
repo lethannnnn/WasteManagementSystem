@@ -4,6 +4,60 @@ import { useToast } from '../context/ToastContext'
 import { MODULES } from '../context/PermissionsContext'
 import type { Module, Action, ModulePerms } from '../context/PermissionsContext'
 
+// ─── User role capability cards ──────────────────────────────────────────────
+interface RoleCapability { label: string; access: 'full' | 'partial' | 'none' }
+interface RoleDef { key: string; label: string; color: string; bg: string; desc: string; caps: RoleCapability[] }
+
+const USER_ROLES: RoleDef[] = [
+  {
+    key: 'donor', label: 'Donor', color: '#166534', bg: '#dcfce7',
+    desc: 'Household users who schedule pickups and earn recycling rewards.',
+    caps: [
+      { label: 'Schedule Pickups',    access: 'full'    },
+      { label: 'View Own Pickups',    access: 'full'    },
+      { label: 'Browse Rewards',      access: 'full'    },
+      { label: 'Redeem Rewards',      access: 'full'    },
+      { label: 'Scan QR at Pickup',   access: 'full'    },
+      { label: 'Waste Classification',access: 'full'    },
+      { label: 'View Profile',        access: 'full'    },
+      { label: 'Manage Collectors',   access: 'none'    },
+      { label: 'Admin Controls',      access: 'none'    },
+    ],
+  },
+  {
+    key: 'sponsor', label: 'Sponsor', color: '#92400e', bg: '#fef3c7',
+    desc: 'Partner brands that fund rewards and run CSR campaigns.',
+    caps: [
+      { label: 'Create/Edit Rewards', access: 'full'    },
+      { label: 'View Own Rewards',    access: 'full'    },
+      { label: 'Redemption Analytics',access: 'full'    },
+      { label: 'View Campaign Stats', access: 'full'    },
+      { label: 'Manage Profile',      access: 'full'    },
+      { label: 'Approve Pickups',     access: 'none'    },
+      { label: 'Manage Collectors',   access: 'none'    },
+      { label: 'Admin Controls',      access: 'none'    },
+    ],
+  },
+  {
+    key: 'collector', label: 'Collector', color: '#1e40af', bg: '#dbeafe',
+    desc: 'Field staff who collect recyclables and complete pickups.',
+    caps: [
+      { label: 'View Assigned Pickups',access: 'full'   },
+      { label: 'Update Pickup Status', access: 'full'   },
+      { label: 'Scan QR at Collection',access: 'full'   },
+      { label: 'View Assigned Routes', access: 'full'   },
+      { label: 'Waste Classification', access: 'full'   },
+      { label: 'GPS Location Sharing', access: 'full'   },
+      { label: 'Create Rewards',       access: 'none'   },
+      { label: 'Admin Controls',       access: 'none'   },
+    ],
+  },
+]
+
+const ACCESS_ICON: Record<RoleCapability['access'], string> = {
+  full: '✓', partial: '◐', none: '✕',
+}
+
 type StoredPerms = Partial<Record<Module, ModulePerms>>
 
 interface AdminRow {
@@ -77,6 +131,35 @@ export default function RolePermissionsView() {
         <p className="perms-view-sub">
           Control what each admin account can do per module. Super admins always have full access.
         </p>
+      </div>
+
+      {/* ── User role capability cards ── */}
+      <div className="perms-roles-section">
+        <div className="perms-roles-heading">User Role Capabilities</div>
+        <div className="perms-roles-grid">
+          {USER_ROLES.map(role => (
+            <div key={role.key} className="perms-role-card">
+              <div className="perms-role-card-header">
+                <span className="perms-role-badge" style={{ background: role.bg, color: role.color }}>
+                  {role.label}
+                </span>
+                <span className="perms-role-desc">{role.desc}</span>
+              </div>
+              <ul className="perms-role-caps">
+                {role.caps.map(cap => (
+                  <li key={cap.label} className={`perms-role-cap perms-role-cap-${cap.access}`}>
+                    <span className="perms-role-cap-icon">{ACCESS_ICON[cap.access]}</span>
+                    {cap.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="perms-roles-heading" style={{ padding: '0 1.5rem', marginBottom: '0.5rem' }}>
+        Admin Permissions
       </div>
 
       {loading ? (

@@ -109,9 +109,7 @@ export default function Sidebar() {
 
       {/* ── Logo header ── */}
       <div className="sidebar-header">
-        {collapsed ? (
-          <img src="/mycycle-logo.png" alt="MyCycle+" className="sidebar-logo-icon" />
-        ) : (
+        {!collapsed && (
           <img src="/mycycle-logo.png" alt="MyCycle+" className="sidebar-logo-full" />
         )}
         <button

@@ -78,14 +78,17 @@ async function fetchPickupPipeline() {
 
 async function fetchAlerts() {
   const oneDayAgo = new Date(Date.now() - 86_400_000).toISOString()
-  const [staleRes, lowStockRes] = await Promise.all([
+  const [staleRes, lowStockRes, inquiriesRes] = await Promise.all([
     supabase.from('pickups').select('pickup_id', { count: 'exact', head: true })
       .eq('status', 'pending').lt('created_at', oneDayAgo),
     supabase.from('rewards').select('reward_id, reward_name, stock_quantity')
       .lte('stock_quantity', 5).eq('is_active', true),
+    supabase.from('sponsor_inquiries').select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
   ])
   return {
-    stalePending:    staleRes.count ?? 0,
+    stalePending:       staleRes.count ?? 0,
+    pendingInquiries:   inquiriesRes.count ?? 0,
     lowStockRewards: (lowStockRes.data ?? []).map(r => ({
       name:  r.reward_name,
       stock: r.stock_quantity ?? 0,
@@ -253,12 +256,20 @@ export default function DashboardPage() {
         {/* System Alerts */}
         <div className="widget alerts-widget">
           <h3>System Alerts</h3>
-          {!alerts || (alerts.stalePending === 0 && alerts.lowStockRewards.length === 0) ? (
+          {!alerts || (alerts.stalePending === 0 && alerts.pendingInquiries === 0 && alerts.lowStockRewards.length === 0) ? (
             <div className="alert-ok">
               <span className="alert-ok-icon">✓</span> All systems normal
             </div>
           ) : (
             <div className="alerts-list">
+              {alerts.pendingInquiries > 0 && (
+                <div className="alert-item warning">
+                  <span className="alert-dot warning" />
+                  <span>
+                    <strong>{alerts.pendingInquiries}</strong> sponsor application{alerts.pendingInquiries > 1 ? 's' : ''} awaiting review
+                  </span>
+                </div>
+              )}
               {alerts.stalePending > 0 && (
                 <div className="alert-item warning">
                   <span className="alert-dot warning" />

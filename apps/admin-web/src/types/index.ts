@@ -8,7 +8,10 @@ export interface User {
   collections?: number
   joinDate: string
   company_name?: string
+  hasLoggedIn?: boolean
 }
+
+export type SponsorStatusFilter = 'all' | 'pending' | 'awaiting' | 'active' | 'rejected' | 'suspended'
 
 export interface Reward {
   id: string
@@ -17,6 +20,32 @@ export interface Reward {
   category: string
   stock: number
   redeemed: number
+  sponsorName?: string
+  isActive?: boolean
+}
+
+export interface SponsorInquiry {
+  id: string
+  company_name: string
+  industry: string
+  website: string
+  salutation: string | null
+  contact_person: string
+  email: string
+  phone: string
+  position: string
+  company_size: string
+  office_state: string | null
+  linkedin: string | null
+  partnership_type: string
+  budget: string
+  objectives: string
+  sustainability_goals: string
+  additional_info: string
+  doc_url: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  rejection_reason: string | null
+  created_at: string
 }
 
 export interface Route {
