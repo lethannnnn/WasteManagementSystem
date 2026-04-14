@@ -4,10 +4,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 
 interface Metrics {
-  activeRewards:      number
-  redemptionsMonth:   number
-  pointsDistributed:  number
-  totalRewards:       number
+  activeRewards:     number
+  totalRewards:      number
+  redemptionsMonth:  number
+  pointsDistributed: number
+  stockRemaining:    number
 }
 
 interface RecentRedemption {
@@ -18,29 +19,33 @@ interface RecentRedemption {
 }
 
 export default function DashboardPage() {
-  const { sponsor }                   = useAuth()
-  const [metrics, setMetrics]         = useState<Metrics | null>(null)
-  const [recent,  setRecent]          = useState<RecentRedemption[]>([])
-  const [loading, setLoading]         = useState(true)
+  const { sponsor }               = useAuth()
+  const [metrics, setMetrics]     = useState<Metrics | null>(null)
+  const [recent,  setRecent]      = useState<RecentRedemption[]>([])
+  const [loading, setLoading]     = useState(true)
 
   useEffect(() => { if (sponsor?.id) load() }, [sponsor?.id])
 
   async function load() {
     setLoading(true)
 
-    const [{ data: rewards }, { data: allRewards }] = await Promise.all([
-      supabase.from('rewards').select('reward_id, is_active').eq('sponsor_id', sponsor!.id),
-      supabase.from('rewards').select('reward_id').eq('sponsor_id', sponsor!.id),
-    ])
+    const { data: rewards } = await supabase
+      .from('rewards')
+      .select('reward_id, is_active, stock_quantity, redeemed_count')
+      .eq('sponsor_id', sponsor!.id)
 
-    const rewardIds = (allRewards ?? []).map((r: any) => r.reward_id)
-    const activeCount = (rewards ?? []).filter((r: any) => r.is_active).length
+    const allRewards    = rewards ?? []
+    const rewardIds     = allRewards.map((r: any) => r.reward_id)
+    const activeCount   = allRewards.filter((r: any) => r.is_active).length
+    const stockRemaining = allRewards
+      .filter((r: any) => r.is_active)
+      .reduce((s: number, r: any) => s + Math.max(0, (r.stock_quantity ?? 0) - (r.redeemed_count ?? 0)), 0)
 
     const monthStart = new Date()
     monthStart.setDate(1)
     monthStart.setHours(0, 0, 0, 0)
 
-    let redemptionsMonth = 0
+    let redemptionsMonth  = 0
     let pointsDistributed = 0
     let recentRows: RecentRedemption[] = []
 
@@ -69,15 +74,16 @@ export default function DashboardPage() {
       }))
     }
 
-    setMetrics({ activeRewards: activeCount, redemptionsMonth, pointsDistributed, totalRewards: allRewards?.length ?? 0 })
+    setMetrics({ activeRewards: activeCount, totalRewards: allRewards.length, redemptionsMonth, pointsDistributed, stockRemaining })
     setRecent(recentRows)
     setLoading(false)
   }
 
   const CARDS = metrics ? [
-    { label: 'Active Rewards',       value: metrics.activeRewards,     sub: `of ${metrics.totalRewards} total` },
-    { label: 'Redemptions (Month)',   value: metrics.redemptionsMonth,  sub: 'this calendar month' },
-    { label: 'Points Distributed',   value: metrics.pointsDistributed.toLocaleString(), sub: 'total across all rewards' },
+    { label: 'Active Rewards',      value: metrics.activeRewards,                         sub: `of ${metrics.totalRewards} total` },
+    { label: 'Redemptions (Month)', value: metrics.redemptionsMonth,                      sub: 'this calendar month' },
+    { label: 'Points Distributed',  value: metrics.pointsDistributed.toLocaleString(),    sub: 'total across all rewards' },
+    { label: 'Stock Remaining',     value: metrics.stockRemaining.toLocaleString(),        sub: 'units across active rewards' },
   ] : []
 
   return (
@@ -91,7 +97,7 @@ export default function DashboardPage() {
         <div className="sp-loading-state">Loading…</div>
       ) : (
         <>
-          <div className="sp-metric-cards">
+          <div className="sp-metric-cards sp-metric-cards-4">
             {CARDS.map(c => (
               <div key={c.label} className="sp-metric-card">
                 <div className="sp-metric-value">{c.value}</div>

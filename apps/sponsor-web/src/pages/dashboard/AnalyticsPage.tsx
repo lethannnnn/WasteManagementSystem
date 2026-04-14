@@ -3,20 +3,20 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 
 interface RewardStat {
-  reward_id:      string
-  reward_name:    string
-  redeemed_count: number
-  stock_quantity: number
+  reward_id:       string
+  reward_name:     string
+  redeemed_count:  number
+  stock_quantity:  number
   points_required: number
 }
 
 interface DayStat { date: string; count: number }
 
 export default function AnalyticsPage() {
-  const { sponsor }                     = useAuth()
-  const [stats,   setStats]             = useState<RewardStat[]>([])
-  const [daily,   setDaily]             = useState<DayStat[]>([])
-  const [loading, setLoading]           = useState(true)
+  const { sponsor }       = useAuth()
+  const [stats, setStats] = useState<RewardStat[]>([])
+  const [daily, setDaily] = useState<DayStat[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (sponsor?.id) load() }, [sponsor?.id])
 
@@ -47,17 +47,26 @@ export default function AnalyticsPage() {
         grouped[date] = (grouped[date] ?? 0) + 1
       }
 
-      const dailyArr: DayStat[] = Object.entries(grouped)
-        .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => a.date.localeCompare(b.date))
-      setDaily(dailyArr)
+      setDaily(
+        Object.entries(grouped)
+          .map(([date, count]) => ({ date, count }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+      )
     }
-
     setLoading(false)
   }
 
-  const maxCount = Math.max(...daily.map(d => d.count), 1)
-  const totalRedeemed = stats.reduce((s, r) => s + r.redeemed_count, 0)
+  const maxCount         = Math.max(...daily.map(d => d.count), 1)
+  const totalRedeemed    = stats.reduce((s, r) => s + r.redeemed_count, 0)
+  const totalPoints      = stats.reduce((s, r) => s + r.redeemed_count * r.points_required, 0)
+  const topReward        = stats[0]?.reward_name ?? '—'
+  const avgPts           = totalRedeemed > 0 ? Math.round(totalPoints / totalRedeemed) : 0
+
+  const SUMMARY = [
+    { label: 'Total Redemptions', value: totalRedeemed,              sub: 'all time' },
+    { label: 'Points Distributed', value: totalPoints.toLocaleString(), sub: 'points given out' },
+    { label: 'Avg Points / Redemption', value: avgPts.toLocaleString(), sub: topReward !== '—' ? `Top: ${topReward}` : 'no data yet' },
+  ]
 
   return (
     <div className="sp-page">
@@ -68,6 +77,17 @@ export default function AnalyticsPage() {
 
       {loading ? <div className="sp-loading-state">Loading…</div> : (
         <>
+          {/* Summary cards */}
+          <div className="sp-metric-cards">
+            {SUMMARY.map(c => (
+              <div key={c.label} className="sp-metric-card">
+                <div className="sp-metric-value">{c.value}</div>
+                <div className="sp-metric-label">{c.label}</div>
+                <div className="sp-metric-sub">{c.sub}</div>
+              </div>
+            ))}
+          </div>
+
           {/* Bar chart */}
           <div className="sp-section">
             <h2>Redemptions Over Time</h2>
@@ -91,9 +111,6 @@ export default function AnalyticsPage() {
           {/* Per-reward breakdown */}
           <div className="sp-section">
             <h2>Reward Breakdown</h2>
-            <div className="sp-analytics-summary">
-              <span>Total redeemed: <strong>{totalRedeemed}</strong></span>
-            </div>
             {stats.length === 0 ? (
               <div className="sp-empty-state">No rewards found.</div>
             ) : (
@@ -109,13 +126,15 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {stats.map(r => {
-                    const used = r.stock_quantity > 0 ? Math.round((r.redeemed_count / r.stock_quantity) * 100) : 0
+                    const used = r.stock_quantity > 0
+                      ? Math.min(100, Math.round((r.redeemed_count / r.stock_quantity) * 100))
+                      : 0
                     return (
                       <tr key={r.reward_id}>
                         <td>{r.reward_name}</td>
                         <td>{r.points_required.toLocaleString()} pts</td>
                         <td>{r.redeemed_count}</td>
-                        <td>{r.stock_quantity - r.redeemed_count}</td>
+                        <td>{Math.max(0, r.stock_quantity - r.redeemed_count)}</td>
                         <td>
                           <div className="sp-usage-bar">
                             <div className="sp-usage-fill" style={{ width: `${used}%` }} />

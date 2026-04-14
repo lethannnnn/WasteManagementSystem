@@ -26,20 +26,26 @@ async function fetchInquiries(): Promise<SponsorInquiry[]> {
 const DEFAULT_ADMIN_EMAIL = 'admin@mycycle.com'
 
 function mapUsers(rows: any[], hasLoginCol: boolean): User[] {
-  return rows.map(u => ({
-    id:           u.user_id,
-    name:         u.user_type === 'sponsor'
-                    ? ((u.sponsors as any)?.[0]?.company_name || u.full_name || '—')
-                    : (u.full_name || '—'),
-    email:        u.email,
-    type:         ({ donor: 'Donor', collector: 'Collector', sponsor: 'Sponsor', admin: 'Admin' }[u.user_type as string] ?? 'Admin') as User['type'],
-    status:       u.is_active ? 'Active' : 'Inactive',
-    points:       (u.donors as any)?.[0]?.total_points ?? 0,
-    collections:  (u.collectors as any)?.[0]?.total_collections ?? 0,
-    joinDate:     u.created_at?.split('T')[0] ?? '',
-    company_name: (u.sponsors as any)?.[0]?.company_name,
-    hasLoggedIn:  hasLoginCol ? (u.has_logged_in ?? false) : false,
-  }))
+  return rows.map(u => {
+    // PostgREST returns related rows as objects (not arrays) when the FK has a unique constraint
+    const sponsor  = u.sponsors   as any
+    const donor    = u.donors     as any
+    const collector = u.collectors as any
+    return {
+      id:           u.user_id,
+      name:         u.user_type === 'sponsor'
+                      ? (sponsor?.company_name || u.full_name || '—')
+                      : (u.full_name || '—'),
+      email:        u.email,
+      type:         ({ donor: 'Donor', collector: 'Collector', sponsor: 'Sponsor', admin: 'Admin' }[u.user_type as string] ?? 'Admin') as User['type'],
+      status:       u.is_active ? 'Active' : 'Inactive',
+      points:       donor?.total_points ?? 0,
+      collections:  collector?.total_collections ?? 0,
+      joinDate:     u.created_at?.split('T')[0] ?? '',
+      company_name: sponsor?.company_name,
+      hasLoggedIn:  hasLoginCol ? (u.has_logged_in ?? false) : false,
+    }
+  })
 }
 
 async function fetchUsers(): Promise<User[]> {
@@ -49,7 +55,8 @@ async function fetchUsers(): Promise<User[]> {
     collectors(collector_id, total_collections),
     sponsors(sponsor_id, company_name)
   `
-  const { data, error } = await supabase
+  // Use admin client so sponsors join bypasses RLS
+  const { data, error } = await supabaseAdmin
     .from('users')
     .select(`${BASE}, has_logged_in`)
     .order('created_at', { ascending: false })
@@ -57,7 +64,7 @@ async function fetchUsers(): Promise<User[]> {
   if (!error) return mapUsers(data ?? [], true)
 
   // has_logged_in column not migrated yet — fall back gracefully
-  const { data: fallback, error: e2 } = await supabase
+  const { data: fallback, error: e2 } = await supabaseAdmin
     .from('users').select(BASE).order('created_at', { ascending: false })
   if (e2) throw e2
   return mapUsers(fallback ?? [], false)
@@ -79,12 +86,6 @@ const TYPE_COLOR: Record<string, string> = {
   Donor: '#166534', Collector: '#1e40af', Sponsor: '#92400e', Admin: '#581c87',
 }
 
-function RoleStats({ user }: { user: User }) {
-  if (user.type === 'Donor')     return <span>{(user.points ?? 0).toLocaleString()} pts</span>
-  if (user.type === 'Collector') return <span>{user.collections ?? 0} pickups</span>
-  if (user.type === 'Sponsor')   return <span>{user.company_name ?? '—'}</span>
-  return <span>—</span>
-}
 
 type ViewMode = 'table' | 'detail' | 'permissions' | 'inquiry'
 
@@ -451,7 +452,6 @@ export default function UsersPage() {
                   <th>Email</th>
                   <th className="sortable-th" onClick={() => toggle('type')}>Type <SortIcon col="type" /></th>
                   <th className="sortable-th" onClick={() => toggle('status')}>Status <SortIcon col="status" /></th>
-                  <th>Stats</th>
                   <th className="sortable-th" onClick={() => toggle('joinDate')}>Joined <SortIcon col="joinDate" /></th>
                   <th>Action</th>
                 </tr>
@@ -482,7 +482,6 @@ export default function UsersPage() {
                         <span className={`status ${user.status.toLowerCase()}`}>{user.status}</span>
                       )}
                     </td>
-                    <td className="user-row-stats"><RoleStats user={user} /></td>
                     <td className="user-row-date">{user.joinDate}</td>
                     <td>
                       <div className="user-row-actions">

@@ -226,6 +226,7 @@ a { color: inherit; text-decoration: none; }
 .sp-empty-state { color: #aaa; padding: 3rem; text-align: center; background: #fff; border-radius: 12px; font-size: 0.9rem; }
 .sp-empty-state a { color: #2E7D32; font-weight: 600; }
 .sp-metric-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+.sp-metric-cards.sp-metric-cards-4 { grid-template-columns: repeat(4, 1fr); }
 .sp-metric-card { background: #fff; border-radius: 14px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,.06); border: 1px solid #f0f8f0; }
 .sp-metric-value { font-size: 2rem; font-weight: 800; color: #1B5E20; margin-bottom: 0.2rem; }
 .sp-metric-label { font-size: 0.82rem; font-weight: 600; color: #555; }
@@ -324,7 +325,7 @@ a { color: inherit; text-decoration: none; }
   .footer-content { grid-template-columns: 1fr 1fr; }
   .sp-login-page { grid-template-columns: 1fr; }
   .sp-login-left { display: none; }
-  .sp-metric-cards { grid-template-columns: 1fr 1fr; }
+  .sp-metric-cards, .sp-metric-cards.sp-metric-cards-4 { grid-template-columns: 1fr 1fr; }
   .sp-profile-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {

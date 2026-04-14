@@ -93,9 +93,14 @@ export default function SponsorInquiryPanel({ inquiry, onBack }: Props) {
           }, { onConflict: 'user_id', ignoreDuplicates: false })
 
           const { error: sponsorErr } = await supabaseAdmin.from('sponsors').insert({
-            user_id:            userId,
-            company_name:       inquiry.company_name,
-            partnership_status: 'active',
+            user_id:                userId,
+            company_name:           inquiry.company_name,
+            industry:               inquiry.industry         || null,
+            website_url:            inquiry.website          || null,
+            contact_person:         inquiry.contact_person   || null,
+            partnership_type:       inquiry.partnership_type || null,
+            partnership_status:     'active',
+            partnership_start_date: new Date().toISOString().split('T')[0],
           })
           if (sponsorErr) throw new Error(sponsorErr.message)
         }
@@ -135,9 +140,14 @@ export default function SponsorInquiryPanel({ inquiry, onBack }: Props) {
         await supabaseAdmin.from('users').update({ is_active: true }).eq('user_id', userId)
 
         const { error: sponsorErr } = await supabaseAdmin.from('sponsors').insert({
-          user_id:            userId,
-          company_name:       inquiry.company_name,
-          partnership_status: 'active',
+          user_id:                userId,
+          company_name:           inquiry.company_name,
+          industry:               inquiry.industry         || null,
+          website_url:            inquiry.website          || null,
+          contact_person:         inquiry.contact_person   || null,
+          partnership_type:       inquiry.partnership_type || null,
+          partnership_status:     'active',
+          partnership_start_date: new Date().toISOString().split('T')[0],
         })
         if (sponsorErr) throw new Error(sponsorErr.message)
       }
